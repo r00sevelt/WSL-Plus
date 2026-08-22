@@ -747,11 +747,34 @@ try
 
     WaitForBlockDevice(DevicePath.c_str());
 
-    std::string CommandLine = std::format("/usr/sbin/mkfs.ext4 -G 4096 '{}'", DevicePath);
+    // WSL-Plus: btrfs 根文件系统 + 子卷布局（快照/回滚/克隆的基础）
+    // N.B. mkfs.btrfs 与 btrfs 子卷工具由 btrfs-progs 提供（惰性/随自编 initramfs 引入）
+    std::string CommandLine = std::format("/usr/sbin/mkfs.btrfs -f '{}'", DevicePath);
     if (UtilExecCommandLine(CommandLine.c_str(), nullptr) < 0)
     {
         return -1;
     }
+
+    // 创建 @ 根系统子卷（btrfs 顶层子卷(5)不可快照——快照必须作用在子卷上）
+    std::string MountDir = "/tmp/wslplus-format";
+    if (UtilExecCommandLine(std::format("mkdir -p '{}'", MountDir).c_str(), nullptr) < 0)
+    {
+        return -1;
+    }
+
+    std::string MountCmd = std::format("mount -t btrfs -o noatime '{}' '{}'", DevicePath, MountDir);
+    if (UtilExecCommandLine(MountCmd.c_str(), nullptr) < 0)
+    {
+        return -1;
+    }
+
+    std::string SubvolCmd = std::format("btrfs subvolume create '{}/@'", MountDir);
+    if (UtilExecCommandLine(SubvolCmd.c_str(), nullptr) < 0)
+    {
+        return -1;
+    }
+
+    UtilExecCommandLine(std::format("umount '{}'", MountDir).c_str(), nullptr);
 
     return 0;
 }
