@@ -151,7 +151,10 @@ set(HEADERS
 add_library(common STATIC ${SOURCES} ${HEADERS})
 add_dependencies(common wslserviceidl wsldevicehostidl localization wslservicemc wslinstalleridl yaml-cpp)
 
-target_precompile_headers(common PRIVATE precomp.h)
+# WSL-Plus 本地改动: 可禁用 PCH（大 PCH 在编译期触发 C3859/C1076 虚拟内存限制）
+if (NOT WSL_DISABLE_PCH)
+    target_precompile_headers(common PRIVATE precomp.h)
+endif()
 set_target_properties(common PROPERTIES FOLDER windows)
 target_include_directories(common PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/../service/mc/${TARGET_PLATFORM}/${CMAKE_BUILD_TYPE})
 
