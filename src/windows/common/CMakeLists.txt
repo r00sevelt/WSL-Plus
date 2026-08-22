@@ -45,6 +45,7 @@ set(SOURCES
     WslClient.cpp
     WslCoreConfig.cpp
     WslCoreFilesystem.cpp
+    WSLPlusCommands.cpp
     WslCoreFirewallSupport.cpp
     WslCoreHostDnsInfo.cpp
     WslCoreNetworkEndpointSettings.cpp

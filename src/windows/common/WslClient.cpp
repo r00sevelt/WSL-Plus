@@ -20,6 +20,7 @@ Abstract:
 #include "CommandLine.h"
 #include <conio.h>
 #include "WslCoreFilesystem.h"
+#include "WSLPlusCommands.h"
 
 #define BASH_PATH L"/bin/bash"
 
@@ -1547,6 +1548,12 @@ int WslMain(_In_ std::wstring_view commandLine)
         }
 
         return exitCode;
+    }
+
+    // WSL-Plus: Incus 风格子命令分发（替换式命令集入口）
+    if (auto rc = wsl::windows::common::wslplus::Dispatch(std::wstring{commandLine}); rc.has_value())
+    {
+        return *rc;
     }
 
     // Use exit code -1 so invokers of wsl.exe can distinguish between a Linux
