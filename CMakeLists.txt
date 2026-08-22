@@ -334,7 +334,7 @@ if (${WSL_BUILD_THIN_PACKAGE})
 endif ()
 
 string(REPLACE "/Zi" "" CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})  # make sure /Zi is removed from the debug flags
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj /W3 /WX /ZH:SHA_256")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj /W3 /WX /ZH:SHA_256 /utf-8")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /Z7 -DDEBUG -DDBG")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /Zi /guard:cf /Qspectre")
 
@@ -554,7 +554,10 @@ set(TAEF_LINK_LIBRARIES
 
 # Subprojects
 add_subdirectory(nuget)
-add_subdirectory(msixgluepackage)
+# WSL+ 本地改动: 默认不构建 Store 升级关联的 gluepackage.msix（无需 Microsoft Store 升级）
+if (NOT WSL_SKIP_GLUE_PACKAGE)
+    add_subdirectory(msixgluepackage)
+endif()
 add_subdirectory(msipackage)
 add_subdirectory(msixinstaller)
 add_subdirectory(src/windows/wsldevicehoststub/inc)
