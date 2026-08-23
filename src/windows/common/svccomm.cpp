@@ -668,6 +668,13 @@ wsl::windows::common::SvcComm::SnapshotDistribution(_In_ LPCGUID DistroGuid, _In
 }
 
 HRESULT
+wsl::windows::common::SvcComm::CloneDistribution(_In_ LPCGUID DistroGuid, _In_ LPCWSTR NewName, _In_ BOOLEAN FullClone) const
+{
+    ClientExecutionContext context;
+    RETURN_HR(m_userSession->CloneDistribution(DistroGuid, NewName, FullClone, context.OutError()));
+}
+
+HRESULT
 wsl::windows::common::SvcComm::SetVersion(_In_ LPCGUID DistroGuid, _In_ ULONG Version) const
 {
     ClientExecutionContext context;

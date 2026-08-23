@@ -257,6 +257,13 @@ interface ILxssUserSession : IUnknown
         [in, string] LPCSTR Name,
         [in, out] LXSS_ERROR_INFO* Error);
 
+    // WSL-Plus: 克隆（链接克隆=COW 差异盘 / FullClone=独立副本）
+    HRESULT CloneDistribution(
+        [in] LPCGUID DistroGuid,
+        [in, string] LPCWSTR NewName,
+        [in] BOOLEAN FullClone,
+        [in, out] LXSS_ERROR_INFO* Error);
+
     HRESULT SetDefaultDistribution(
         [in] LPCGUID DistroGuid,
         [in, out] LXSS_ERROR_INFO* Error);

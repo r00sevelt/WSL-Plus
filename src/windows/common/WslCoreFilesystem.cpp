@@ -77,6 +77,34 @@ void wsl::core::filesystem::CreateVhd(_In_ LPCWSTR target, _In_ ULONGLONG maximu
     }
 }
 
+void wsl::core::filesystem::CreateLinkedVhd(_In_ LPCWSTR target, _In_ LPCWSTR parentPath, _In_ PSID userSid)
+{
+    THROW_HR_IF(
+        E_INVALIDARG,
+        !wsl::windows::common::string::IsPathComponentEqual(std::filesystem::path{target}.extension().native(), windows::common::wslutil::c_vhdxFileExtension));
+
+    VIRTUAL_STORAGE_TYPE storageType{};
+    storageType.DeviceId = VIRTUAL_STORAGE_TYPE_DEVICE_VHDX;
+    storageType.VendorId = VIRTUAL_STORAGE_TYPE_VENDOR_MICROSOFT;
+
+    // WSL-Plus: VERSION_3 = 差异盘（ParentPath 指向父盘，COW 写时复制）
+    CREATE_VIRTUAL_DISK_PARAMETERS createVhdParameters{};
+    createVhdParameters.Version = CREATE_VIRTUAL_DISK_VERSION_3;
+    createVhdParameters.Version3.ParentPath = parentPath;
+
+    // Explicited owner（与 CreateVhd 一致：HcsGrantVmAccess 需要 user ACL）
+    auto sd = windows::common::security::CreateSecurityDescriptor(userSid);
+
+    wil::unique_hfile vhd{};
+    auto result = HRESULT_FROM_WIN32(
+        ::CreateVirtualDisk(&storageType, target, VIRTUAL_DISK_ACCESS_NONE, &sd, CREATE_VIRTUAL_DISK_FLAG_NONE, 0, &createVhdParameters, nullptr, &vhd));
+    if (FAILED(result))
+    {
+        THROW_HR_WITH_USER_ERROR(
+            result, shared::Localization::MessageFailedToCreateDisk(target, windows::common::wslutil::GetErrorString(result)));
+    }
+}
+
 wil::unique_handle wsl::core::filesystem::OpenVhd(_In_ LPCWSTR Path, _In_ VIRTUAL_DISK_ACCESS_MASK Mask)
 {
     WI_ASSERT(wsl::windows::common::wslutil::IsVhdFile(std::filesystem::path{Path}));

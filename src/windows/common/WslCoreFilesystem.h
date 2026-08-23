@@ -35,6 +35,10 @@ wil::unique_hfile CreateFile(
 /// </summary>
 void CreateVhd(_In_ LPCWSTR target, _In_ ULONGLONG maximumSize, _In_ PSID userSid, _In_ BOOL sparse, _In_ BOOL fixed);
 
+// WSL-Plus: 链接克隆（COW 写时复制差异盘，父盘=目标快照/源盘；VERSION_3 ParentPath）
+// 依赖: 父盘必须存在且不可同时被写入（调用方保证实例离线）
+void CreateLinkedVhd(_In_ LPCWSTR target, _In_ LPCWSTR parentPath, _In_ PSID userSid);
+
 wil::unique_handle OpenVhd(_In_ LPCWSTR Path, _In_ VIRTUAL_DISK_ACCESS_MASK Mask);
 
 void CompactVhd(_In_ LPCWSTR Path);

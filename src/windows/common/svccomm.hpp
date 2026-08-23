@@ -93,6 +93,10 @@ public:
     HRESULT
     SnapshotDistribution(_In_ LPCGUID DistroGuid, _In_ LPCSTR action, _In_ LPCSTR name) const;
 
+    // WSL-Plus: 克隆（链接克隆=COW 差异盘 / FullClone=独立副本）
+    HRESULT
+    CloneDistribution(_In_ LPCGUID DistroGuid, _In_ LPCWSTR NewName, _In_ BOOLEAN FullClone) const;
+
     HRESULT
     CompactDistribution(_In_ LPCGUID DistroGuid) const;
 

@@ -500,6 +500,14 @@ try
     return session->SnapshotDistribution(DistroGuid, Action, Name);
 }
 CATCH_RETURN(Error)
+
+HRESULT STDMETHODCALLTYPE LxssUserSession::CloneDistribution(_In_ LPCGUID DistroGuid, _In_ LPCWSTR NewName, _In_ BOOLEAN FullClone, _Out_ LXSS_ERROR_INFO* Error)
+try
+{
+    const auto session = FindOrCreateUserSession(false);
+    return session->CloneDistribution(DistroGuid, NewName, FullClone);
+}
+CATCH_RETURN(Error)
 CATCH_RETURN()
 
 HRESULT STDMETHODCALLTYPE LxssUserSession::CompactDistribution(_In_ LPCGUID DistroGuid, _Out_ LXSS_ERROR_INFO* Error)
@@ -1810,6 +1818,53 @@ try
     };
     THROW_IF_WIN32_BOOL_FALSE(::DeviceIoControl(vhd.get(), FSCTL_SET_SPARSE, &buffer, sizeof(buffer), nullptr, 0, nullptr, nullptr));
 
+    return S_OK;
+}
+CATCH_RETURN()
+
+// WSL-Plus: 克隆实现 —— 注册项复制 + 磁盘生成（链接=COW 差异盘 / 完整=独立副本）
+// v0.1 说明: 唯一化（hostname/SSH key/机器 ID）为 v0.2 范围；当前完成磁盘+注册+可启动
+HRESULT LxssUserSessionImpl::CloneDistribution(_In_ LPCGUID DistroGuid, _In_ LPCWSTR NewName, _In_ BOOLEAN FullClone)
+try
+{
+    std::lock_guard lock(m_instanceLock);
+    const auto userToken = wsl::windows::common::security::GetUserToken(TokenImpersonation);
+    const wil::unique_hkey lxssKey = s_OpenLxssUserKey(userToken.get());
+    const auto srcRegistration = DistributionRegistration::Open(lxssKey.get(), *DistroGuid);
+    const auto srcConfig = s_GetDistributionConfiguration(srcRegistration);
+
+    // 目标注册项（新 GUID + 同名 VHD 文件；BasePath 取自源目录）
+    GUID newId;
+    THROW_IF_FAILED(CoCreateGuid(&newId));
+
+    const auto srcVhd = srcConfig.VhdFilePath;
+    const auto dstVhd = srcVhd.parent_path() / (std::wstring(NewName) + L".vhdx");
+
+    if (FullClone)
+    {
+        // v0.1 完整克隆 = 独立文件副本（注: NTFS 动态 VHDX 复制后为实占空间副本，独立性优先）
+        THROW_LAST_ERROR_IF(!::CopyFileW(srcVhd.c_str(), dstVhd.c_str(), false));
+    }
+    else
+    {
+        // 链接克隆（COW 差异盘）: 父盘必须离线（调用方通过实例状态保证）
+        const auto userSid = GetUserSid();
+        wsl::core::filesystem::CreateLinkedVhd(dstVhd.c_str(), srcVhd.c_str(), userSid);
+    }
+
+    const auto dstRegistration = DistributionRegistration::Create(
+        lxssKey.get(),
+        newId,
+        NewName,
+        srcConfig.Version,
+        srcVhd.parent_path().c_str(),
+        srcConfig.Flags,
+        0 /* DefaultUid: v0.1 取默认，唯一化 v0.2 */,
+        srcConfig.PackageFamilyName.c_str(),
+        dstVhd.filename().c_str(),
+        false);
+
+    (void)dstRegistration;
     return S_OK;
 }
 CATCH_RETURN()

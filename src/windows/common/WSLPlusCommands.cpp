@@ -109,7 +109,41 @@ std::optional<int> Dispatch(_In_ const std::wstring& commandLine)
     }
 
     //
-    // 后续子命令（clone / profile / ls / file / ...）在此扩展 —— 替换式命令集演进点
+    // clone 子命令组（P1-B 克隆: 链接克隆=默认 / --full=完整克隆）
+    //
+    if (verb == L"clone")
+    {
+        if (argc < 4)
+        {
+            wsl::windows::common::wslutil::PrintMessage(
+                L"用法: wsl clone <src> <dst> [--full]（默认链接克隆=COW 差异盘；--full=独立副本）");
+            return -1;
+        }
+
+        bool fullClone = false;
+        for (int i = 3; i < argc; ++i)
+        {
+            if (std::wstring_view(argv[i]) == L"--full")
+            {
+                fullClone = true;
+            }
+        }
+
+        wsl::windows::common::SvcComm service;
+        const auto distroId = service.GetDistributionId(argv[2]);
+        const HRESULT result = service.CloneDistribution(&distroId, argv[3], fullClone);
+        if (FAILED(result))
+        {
+            wsl::windows::common::wslutil::PrintMessage(wsl::windows::common::wslutil::GetSystemErrorString(result));
+            return -1;
+        }
+
+        wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus clone 命令已提交");
+        return 0;
+    }
+
+    //
+    // 后续子命令（profile / ls / file / ...）在此扩展 —— 替换式命令集演进点
     //
 
     //
