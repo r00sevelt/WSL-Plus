@@ -20,15 +20,30 @@ namespace wsl::windows::common::wslplus
 {
 namespace
 {
-    void PrintStub(_In_ LPCWSTR commandLine, const std::vector<std::wstring>& args)
+    // WSL-Plus: 快照命令执行（CLI→SvcComm→服务端→guest btrfs 模块）
+    int ExecuteSnapshot(_In_ LPCWSTR action, _In_ const std::vector<std::wstring>& args)
     {
-        std::wstring message = L"WSL-Plus: '" + std::wstring(commandLine) + L"' 骨架就绪（服务端路由 S4 接入）：";
-        for (const auto& arg : args)
+        if (args.empty() || args[0].empty())
         {
-            message += L" ";
-            message += L"'" + arg + L"'";
+            PrintSnapshotUsage();
+            return -1;
         }
-        wsl::windows::common::wslutil::PrintMessage(message);
+
+        wsl::windows::common::SvcComm service;
+        const auto distroId = service.GetDistributionId(args[0].c_str());
+        const std::string narrowAction = wsl::shared::string::ToNarrow(action);
+        const std::wstring name = (args.size() > 1) ? args[1] : L"";
+        const std::string narrowName = wsl::shared::string::ToNarrow(name);
+
+        const HRESULT result = service.SnapshotDistribution(&distroId, narrowAction.c_str(), narrowName.c_str());
+        if (FAILED(result))
+        {
+            wsl::windows::common::wslutil::PrintMessage(wsl::windows::common::wslutil::GetSystemErrorString(result));
+            return -1;
+        }
+
+        wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus snapshot 命令已提交");
+        return 0;
     }
 
     void PrintSnapshotUsage()
@@ -74,23 +89,19 @@ std::optional<int> Dispatch(_In_ const std::wstring& commandLine)
 
         if (action == L"create")
         {
-            PrintStub(L"snapshot create", args);
-            return 0;
+            return ExecuteSnapshot(L"create", args);
         }
         else if (action == L"list")
         {
-            PrintStub(L"snapshot list", args);
-            return 0;
+            return ExecuteSnapshot(L"list", args);
         }
         else if (action == L"restore")
         {
-            PrintStub(L"snapshot restore", args);
-            return 0;
+            return ExecuteSnapshot(L"restore", args);
         }
         else if (action == L"delete")
         {
-            PrintStub(L"snapshot delete", args);
-            return 0;
+            return ExecuteSnapshot(L"delete", args);
         }
 
         PrintSnapshotUsage();

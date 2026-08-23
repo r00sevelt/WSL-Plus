@@ -492,6 +492,14 @@ try
 
     return session->ResizeDistribution(DistroGuid, OutputHandle, NewSize);
 }
+
+HRESULT STDMETHODCALLTYPE LxssUserSession::SnapshotDistribution(_In_ LPCGUID DistroGuid, _In_ LPCSTR Action, _In_ LPCSTR Name, _Out_ LXSS_ERROR_INFO* Error)
+try
+{
+    const auto session = FindOrCreateUserSession(false);
+    return session->SnapshotDistribution(DistroGuid, Action, Name);
+}
+CATCH_RETURN(Error)
 CATCH_RETURN()
 
 HRESULT STDMETHODCALLTYPE LxssUserSession::CompactDistribution(_In_ LPCGUID DistroGuid, _Out_ LXSS_ERROR_INFO* Error)
@@ -1802,6 +1810,32 @@ try
     };
     THROW_IF_WIN32_BOOL_FALSE(::DeviceIoControl(vhd.get(), FSCTL_SET_SPARSE, &buffer, sizeof(buffer), nullptr, 0, nullptr, nullptr));
 
+    return S_OK;
+}
+CATCH_RETURN()
+
+// WSL-Plus: 快照命令实现（create|list|restore|delete）—— 路由：注册项 → utility VM（附着磁盘）→ btrfs 快照模块
+HRESULT LxssUserSessionImpl::SnapshotDistribution(_In_ LPCGUID DistroGuid, _In_ LPCSTR Action, _In_ LPCSTR Name)
+try
+{
+    std::lock_guard lock(m_instanceLock);
+    const auto userToken = wsl::windows::common::security::GetUserToken(TokenImpersonation);
+    const wil::unique_hkey lxssKey = s_OpenLxssUserKey(userToken.get());
+    const auto registration = DistributionRegistration::Open(lxssKey.get(), *DistroGuid);
+    const auto configuration = s_GetDistributionConfiguration(registration);
+    RETURN_HR_IF(WSL_E_WSL2_NEEDED, WI_IsFlagClear(configuration.Flags, LXSS_DISTRO_FLAGS_VM_MODE));
+
+    if (m_utilityVm && m_utilityVm->IsVhdAttached(configuration.VhdFilePath.c_str()))
+    {
+        THROW_HR_WITH_USER_ERROR(WSL_E_DISTRO_NOT_STOPPED, wsl::shared::Localization::MessageVhdInUse());
+    }
+
+    const auto& vhdPath = configuration.VhdFilePath;
+    _CreateVm();
+    const auto lun = m_utilityVm->AttachDisk(vhdPath.c_str(), WslCoreVm::DiskType::VHD, {}, true, userToken.get());
+
+    auto cleanup = wil::scope_exit_log(WI_DIAGNOSTICS_INFO, [&] { m_utilityVm->EjectVhd(vhdPath.c_str()); });
+    m_utilityVm->SnapshotDistribution(lun, Action, Name);
     return S_OK;
 }
 CATCH_RETURN()

@@ -661,6 +661,13 @@ wsl::windows::common::SvcComm::CompactDistribution(_In_ LPCGUID DistroGuid) cons
 }
 
 HRESULT
+wsl::windows::common::SvcComm::SnapshotDistribution(_In_ LPCGUID DistroGuid, _In_ LPCSTR action, _In_ LPCSTR name) const
+{
+    ClientExecutionContext context;
+    RETURN_HR(m_userSession->SnapshotDistribution(DistroGuid, action, name, context.OutError()));
+}
+
+HRESULT
 wsl::windows::common::SvcComm::SetVersion(_In_ LPCGUID DistroGuid, _In_ ULONG Version) const
 {
     ClientExecutionContext context;

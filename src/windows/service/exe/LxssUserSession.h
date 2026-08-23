@@ -190,6 +190,9 @@ public:
     /// </summary>
     IFACEMETHOD(ResizeDistribution)(_In_ LPCGUID DistroGuid, _In_ HANDLE OutputHandle, _In_ ULONG64 NewSize, _Out_ LXSS_ERROR_INFO* Error) override;
 
+    // WSL-Plus: 快照命令（create|list|restore|delete）
+    IFACEMETHOD(SnapshotDistribution)(_In_ LPCGUID DistroGuid, _In_ LPCSTR Action, _In_ LPCSTR Name, _Out_ LXSS_ERROR_INFO* Error) override;
+
     /// <summary>
     /// Compacts the virtual disk of a distribution.
     /// </summary>
@@ -471,6 +474,9 @@ public:
     /// </summary>
     HRESULT
     ResizeDistribution(_In_ LPCGUID DistroGuid, _In_ HANDLE OutputHandle, _In_ ULONG64 NewSize);
+
+    // WSL-Plus: 快照命令实现（路由至 utility VM 的 btrfs 快照模块）
+    SnapshotDistribution(_In_ LPCGUID DistroGuid, _In_ LPCSTR Action, _In_ LPCSTR Name);
 
     /// <summary>
     /// Compacts the disk of a distribution.
