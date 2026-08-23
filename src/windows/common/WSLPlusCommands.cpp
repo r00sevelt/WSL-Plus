@@ -20,6 +20,8 @@ namespace wsl::windows::common::wslplus
 {
 namespace
 {
+    void PrintSnapshotUsage(); // 前向声明（定义在 ExecuteSnapshot 之后）
+
     // WSL-Plus: 快照命令执行（CLI→SvcComm→服务端→guest btrfs 模块）
     int ExecuteSnapshot(_In_ LPCWSTR action, _In_ const std::vector<std::wstring>& args)
     {
@@ -31,9 +33,9 @@ namespace
 
         wsl::windows::common::SvcComm service;
         const auto distroId = service.GetDistributionId(args[0].c_str());
-        const std::string narrowAction = wsl::shared::string::ToNarrow(action);
+        const std::string narrowAction = wsl::windows::common::string::WideToMultiByte(action);
         const std::wstring name = (args.size() > 1) ? args[1] : L"";
-        const std::string narrowName = wsl::shared::string::ToNarrow(name);
+        const std::string narrowName = wsl::windows::common::string::WideToMultiByte(name);
 
         const HRESULT result = service.SnapshotDistribution(&distroId, narrowAction.c_str(), narrowName.c_str());
         if (FAILED(result))
