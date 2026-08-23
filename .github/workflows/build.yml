@@ -8,6 +8,11 @@ on:
     branches: [master, dev]
   workflow_dispatch:
 
+# WSL-Plus: 并发控制 —— 新 push 顶掉排队的旧运行（免费计划并发=1，防排队烧分钟）
+concurrency:
+  group: build-verify-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-verify:
     runs-on: windows-latest
