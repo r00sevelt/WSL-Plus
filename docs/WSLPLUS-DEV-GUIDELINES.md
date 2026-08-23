@@ -1,0 +1,45 @@
+# WSL-Plus 开发准则（铁律）
+
+> 用户 2026-08-24 定调：**不能像微软那样堆屎山**。模块化 > 一次性，灵活性 > 写死，
+> 兼容性 > 独断，优雅 > 快。以下每一条都是审查门槛。
+
+## 五原则
+
+### 1. 模块化（边界清晰）
+- 每个功能 = 独立模块：`组件内部自洽 + 对外接口最小`
+- 快照/网络/设备/镜像 = 各自模块（snapshot-module / network-module / ...），
+  不把逻辑塞进 WslCoreVm 巨型类（微软模式）：服务方法只做"路由"，
+  业务逻辑在模块内（如 `WSLPlusCommands` 只解析 → 转发，不做 btrfs 细节）
+- 数据流单向：CLI → API → 服务层 → guest 通道，禁止跨层直连
+
+### 2. 灵活性（可配置/可替换）
+- 新能力加"开关/配置"而不是"硬编码路径"（例：快照工具路径可配置，不写死 /usr/bin/btrfs）
+- 通道/后端抽象：（未来 hypervisor/VMM/文件系统可换——OpenVMM/QEMU/btrfs/zfs
+  都是可替换插件，核心不绑定）
+
+### 3. 兼容性
+- 全链路：PowerShell/pwsh 第一、cmd 保底（蓝图 5.7 shell 规范）
+- 协议兼容：guest 侧脚本独立文件（wslplus-snapshot.sh），Windows 侧只发指令，
+  Linux 侧自实现——跨平台能力清单分离（Windows 服务 ↔ Linux guest 边界 = 协议）
+- 上游兼容：上游源码能干净合入（master 永远干净；改动集中在 wslplus 专属文件）
+- 竞态兼容：命令可重入；实例不存在/快照不存在 → 明确错误码而非崩溃
+
+### 4. 代码优雅性
+- 命名：WSL-Plus 专有前缀 `wslplus::`（Windows）/ `wslplus_`（Linux），与微软 `wsl::` 区分
+- 错误处理：**异常或返回码固定一类**（照项目惯例 HRESULT/HRESULT 类 THROW_*；
+  Linux 侧 THROW_ERRNO / ReturnCode）；错误信息带上下文，可审计
+- 无魔法字符串：协议字段/常量集中（枚举/constexpr），不散落
+- 注释不解释"怎么做"，写"为什么"（WSL-Plus 异于原版的地方必须注 WHY）
+- 不 copy-paste 微软长函数：复用其模式但提炼成小函数（照抄=屎山传染）
+
+### 5. 可测试性
+- guest 脚本可独立在 Linux 测试（不依赖 Windows 服务 → wslplus-snapshot.sh 可在
+  btrfs 容器/VM 直接跑、出流程文档）
+- 服务端 API 纯粹（无 UI 绑定）→ 可单元测试
+- 每功能配"验收清单"（施工图六节式）
+
+## 技术债红线（禁止事项）
+- ❌ 在 WslCoreVm 里再加 200 行的接口方法（微软式）——服务方法 ≤ 20 行，逻辑在下层模块
+- ❌ 内联 shell 字符串做复复杂操作——guest 侧逻辑放独立 `.sh` 模块
+- ❌ 未审即推（CI 未绿的改动不得合入主线——红=返工信号）
+- ❌ 上游混改：一个文件里"上游行+WSL-Plus 行"混排（WSL-Plus 改动独立 sections）
