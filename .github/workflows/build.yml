@@ -20,9 +20,9 @@ jobs:
         run: |
           cmake . -A x64 -DWSL_SKIP_GLUE_PACKAGE=ON -DWSL_DISABLE_PCH=ON -DCMAKE_BUILD_TYPE=Release
 
-      - name: "编译 wsl + wslservice（m:2 低并行）"
+      - name: "编译 wsl + wslservice（m:4 云上满配，16GB VM 独立无桌面竞争）"
         run: |
-          cmake --build . --config Release --target wsl wslservice -- /m:2
+          cmake --build . --config Release --target wsl wslservice -- /m:4
 
       - name: "产物检查"
         run: |
