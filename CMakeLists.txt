@@ -335,6 +335,13 @@ endif ()
 
 string(REPLACE "/Zi" "" CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})  # make sure /Zi is removed from the debug flags
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj /W3 /WX /ZH:SHA_256 /utf-8")
+
+# WSL-Plus: PCH 禁用时全局强制注入 common 的 precomp.h（复现"头先行"PCH 语义，修复
+# winsock/windows.h 头顺序冲突 C2011 sockaddr；绝对路径+引号防空格，对所有 Windows TU 生效）
+if (WSL_DISABLE_PCH)
+    get_filename_component(_WSLPLUS_FORCED_PRECOMP "${CMAKE_CURRENT_SOURCE_DIR}/src/windows/common/precomp.h" ABSOLUTE)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /FI\"${_WSLPLUS_FORCED_PRECOMP}\"")
+endif()
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /Z7 -DDEBUG -DDBG")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /Zi /guard:cf /Qspectre")
 
