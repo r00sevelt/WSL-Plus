@@ -13,17 +13,17 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 60
     steps:
-      - name: 检出代码
+      - name: "检出代码"
         uses: actions/checkout@v4
 
-      - name: 配置（WSL-Plus 构建参数: 低内存/禁用 PCH/跳过 gluepackage）
+      - name: "配置构建参数（低内存、禁用PCH、跳过gluepackage）"
         run: |
           cmake . -A x64 -DWSL_SKIP_GLUE_PACKAGE=ON -DWSL_DISABLE_PCH=ON -DCMAKE_BUILD_TYPE=Release
 
-      - name: 编译 wsl + wslservice（/m:2 低并行）
+      - name: "编译 wsl + wslservice（m:2 低并行）"
         run: |
           cmake --build . --config Release --target wsl wslservice -- /m:2
 
-      - name: 产物检查
+      - name: "产物检查"
         run: |
           Get-ChildItem bin\x64\Release\wsl.exe, bin\x64\Release\wslservice.exe | Select-Object FullName, Length
