@@ -2914,6 +2914,78 @@ Return Value:
     return 0;
 }
 
+// WSL-Plus: btrfs 子卷快照命令处理（create|list|restore|delete）
+// 前置: 根文件系统 = btrfs @ 子卷（S2 改造）；快照目录 = /@snap-<name>（@ 内部）
+int ProcessSnapshotMessage(gsl::span<gsl::byte> Buffer)
+try
+{
+    auto* Message = gslhelpers::try_get_struct<LX_MINI_INIT_SNAPSHOT_MESSAGE>(Buffer);
+    if (!Message)
+    {
+        LOG_ERROR("Unexpected message size {}", Buffer.size());
+        return -1;
+    }
+
+    wil::unique_fd SocketFd{UtilConnectVsock(LX_INIT_UTILITY_VM_INIT_PORT, true)};
+    if (!SocketFd)
+    {
+        return -1;
+    }
+
+    // 拷贝 action/name（Buffer 可能随消息生命周期结束）
+    const char* actionPtr = wsl::shared::string::FromSpan(Buffer, Message->ActionOffset);
+    const char* namePtr = wsl::shared::string::FromSpan(Buffer, Message->NameOffset);
+    const std::string action = actionPtr ? actionPtr : "";
+    const std::string name = namePtr ? namePtr : "";
+
+    const int ChildPid = UtilCreateChildProcess(
+        "Snapshot",
+        [Message, action, name, Channel = wsl::shared::SocketChannel{std::move(SocketFd), "Snapshot"}]() mutable {
+            int ResponseCode = -1;
+            auto ReportStatus = wil::scope_exit([&]() {
+                LX_MINI_INIT_SNAPSHOT_RESPONSE_MESSAGE ResponseMessage{};
+                ResponseMessage.ResponseCode = ResponseCode;
+                ResponseMessage.Header.MessageType = LxMiniInitMessageSnapshotResponse;
+                ResponseMessage.Header.MessageSize = sizeof(ResponseMessage);
+                Channel.SendMessage(ResponseMessage);
+            });
+
+            std::string CommandLine;
+            if (action == "create")
+            {
+                std::string snapName = name.empty() ? std::format("auto-{}", getpid()) : name;
+                CommandLine = std::format("/usr/bin/btrfs subvolume snapshot / '/@snap-{}'", snapName);
+            }
+            else if (action == "list")
+            {
+                CommandLine = "/usr/bin/btrfs subvolume list -p /";
+            }
+            else if (action == "delete")
+            {
+                CommandLine = std::format("/usr/bin/btrfs subvolume delete '/@snap-{}'", name);
+            }
+            else if (action == "restore")
+            {
+                // WSL-Plus v0.1: 回滚 = 标记重启后生效（init 启动阶段做子卷交换），先落盘标记
+                CommandLine = std::format("touch '/run/wslplus-rollback-{}'", name);
+            }
+            else
+            {
+                THROW_ERRNO(EINVAL);
+            }
+
+            if (UtilExecCommandLine(CommandLine.c_str(), nullptr) < 0)
+            {
+                return;
+            }
+
+            ResponseCode = 0;
+        });
+
+    return (ChildPid < 0) ? -1 : 0;
+}
+CATCH_RETURN_ERRNO();
+
 int ProcessResizeDistributionMessage(gsl::span<gsl::byte> Buffer)
 try
 {
@@ -3432,6 +3504,13 @@ try
     {
 
         ProcessTrimDistributionMessage(Buffer);
+        return 0;
+    }
+
+    case LxMiniInitMessageSnapshot:
+    {
+
+        ProcessSnapshotMessage(Buffer);
         return 0;
     }
 

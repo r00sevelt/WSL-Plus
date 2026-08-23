@@ -2526,6 +2526,24 @@ void WslCoreVm::ResizeDistribution(_In_ ULONG Lun, _In_ HANDLE OutputHandle, _In
     }
 }
 
+void WslCoreVm::SnapshotDistribution(_In_ ULONG Lun, _In_ LPCSTR action, _In_ LPCSTR name)
+{
+    auto lock = m_lock.lock_exclusive();
+
+    wsl::shared::MessageWriter<LX_MINI_INIT_SNAPSHOT_MESSAGE> message(LxMiniInitMessageSnapshot);
+    message->ScsiLun = Lun;
+    message.WriteString(message->ActionOffset, action);
+    message.WriteString(message->NameOffset, name);
+
+    auto transaction = m_miniInitChannel.StartTransaction();
+    transaction.Send(message.Span());
+
+    wsl::shared::SocketChannel channel{AcceptConnection(m_vmConfig.KernelBootTimeout), "Snapshot", {m_terminatingEvent.get()}};
+
+    const auto& resultMessage = channel.ReceiveMessage<LX_MINI_INIT_SNAPSHOT_RESPONSE_MESSAGE>();
+    THROW_HR_IF(E_FAIL, resultMessage.ResponseCode != 0);
+}
+
 void WslCoreVm::TrimDistribution(_In_ ULONG Lun)
 {
     auto lock = m_lock.lock_exclusive();

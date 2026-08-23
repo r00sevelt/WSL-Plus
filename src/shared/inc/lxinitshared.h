@@ -358,6 +358,8 @@ typedef enum _LX_MESSAGE_TYPE
     LxMinitWaitForPmemDeviceResult,
     LxMiniInitMessageResizeDistribution,
     LxMiniInitMessageResizeDistributionResponse,
+    LxMiniInitMessageSnapshot,
+    LxMiniInitMessageSnapshotResponse,
     LxProcessCrash,
     LxGnsMessageInterfaceConfiguration,
     LxGnsMessageResult,
@@ -1262,6 +1264,39 @@ typedef struct _LX_MINI_INIT_MESSAGE
 } LX_MINI_INIT_MESSAGE, *PLX_MINI_INIT_MESSAGE;
 
 using PCLX_MINI_INIT_MESSAGE = const LX_MINI_INIT_MESSAGE*;
+
+// WSL-Plus: 快照命令消息（btrfs 子卷快照：create|list|restore|delete）
+typedef struct _LX_MINI_INIT_SNAPSHOT_MESSAGE
+{
+    static inline auto Type = LxMiniInitMessageSnapshot;
+
+    MESSAGE_HEADER Header;
+    unsigned int ScsiLun;
+    unsigned int ActionOffset; // create|list|restore|delete
+    unsigned int NameOffset;   // snapshot name（操作对象，可为空）
+    char Buffer[];
+
+    PRETTY_PRINT(
+        FIELD(Header),
+        FIELD(ScsiLun),
+        STRING_FIELD(ActionOffset),
+        STRING_FIELD(NameOffset));
+
+} LX_MINI_INIT_SNAPSHOT_MESSAGE, *PLX_MINI_INIT_SNAPSHOT_MESSAGE;
+
+typedef struct _LX_MINI_INIT_SNAPSHOT_RESPONSE_MESSAGE
+{
+    static inline auto Type = LxMiniInitMessageSnapshotResponse;
+
+    MESSAGE_HEADER Header;
+    unsigned int ResponseCode;
+    char Buffer[];
+
+    PRETTY_PRINT(
+        FIELD(Header),
+        FIELD(ResponseCode));
+
+} LX_MINI_INIT_SNAPSHOT_RESPONSE_MESSAGE, *PLX_MINI_INIT_SNAPSHOT_RESPONSE_MESSAGE;
 
 typedef enum _LX_MINI_INIT_MEMORY_RECLAIM_MODE
 {
