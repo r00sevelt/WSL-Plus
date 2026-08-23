@@ -123,7 +123,8 @@ public:
     void ResizeDistribution(_In_ ULONG Lun, _In_ HANDLE OutputHandle, _In_ ULONG64 NewSize);
 
     // WSL-Plus: send a snapshot command to guest (create|list|restore|delete on btrfs @ 子卷)
-    void SnapshotDistribution(_In_ ULONG Lun, _In_ LPCSTR action, _In_ LPCSTR name);
+    // OutputHandle: list 结果的文本通道（可空）
+    void SnapshotDistribution(_In_ ULONG Lun, _In_ HANDLE OutputHandle, _In_ LPCSTR action, _In_ LPCSTR name);
 
     void TrimDistribution(_In_ ULONG Lun);
 

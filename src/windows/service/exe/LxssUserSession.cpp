@@ -493,11 +493,11 @@ try
     return session->ResizeDistribution(DistroGuid, OutputHandle, NewSize);
 }
 
-HRESULT STDMETHODCALLTYPE LxssUserSession::SnapshotDistribution(_In_ LPCGUID DistroGuid, _In_ LPCSTR Action, _In_ LPCSTR Name, _Out_ LXSS_ERROR_INFO* Error)
+HRESULT STDMETHODCALLTYPE LxssUserSession::SnapshotDistribution(_In_ LPCGUID DistroGuid, _In_ HANDLE OutputHandle, _In_ LPCSTR Action, _In_ LPCSTR Name, _Out_ LXSS_ERROR_INFO* Error)
 try
 {
     const auto session = FindOrCreateUserSession(false);
-    return session->SnapshotDistribution(DistroGuid, Action, Name);
+    return session->SnapshotDistribution(DistroGuid, OutputHandle, Action, Name);
 }
 CATCH_RETURN(Error)
 
@@ -1870,7 +1870,7 @@ try
 CATCH_RETURN()
 
 // WSL-Plus: 快照命令实现（create|list|restore|delete）—— 路由：注册项 → utility VM（附着磁盘）→ btrfs 快照模块
-HRESULT LxssUserSessionImpl::SnapshotDistribution(_In_ LPCGUID DistroGuid, _In_ LPCSTR Action, _In_ LPCSTR Name)
+HRESULT LxssUserSessionImpl::SnapshotDistribution(_In_ LPCGUID DistroGuid, _In_ HANDLE OutputHandle, _In_ LPCSTR Action, _In_ LPCSTR Name)
 try
 {
     std::lock_guard lock(m_instanceLock);
@@ -1890,7 +1890,7 @@ try
     const auto lun = m_utilityVm->AttachDisk(vhdPath.c_str(), WslCoreVm::DiskType::VHD, {}, true, userToken.get());
 
     auto cleanup = wil::scope_exit_log(WI_DIAGNOSTICS_INFO, [&] { m_utilityVm->EjectVhd(vhdPath.c_str()); });
-    m_utilityVm->SnapshotDistribution(lun, Action, Name);
+    m_utilityVm->SnapshotDistribution(lun, OutputHandle, Action, Name);
     return S_OK;
 }
 CATCH_RETURN()

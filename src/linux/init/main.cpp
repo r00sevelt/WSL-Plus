@@ -2932,6 +2932,13 @@ try
         return -1;
     }
 
+    // WSL-Plus: list 输出通道（照 ResizeDistribution 模式）
+    wil::unique_fd OutputSocketFd{UtilConnectVsock(LX_INIT_UTILITY_VM_INIT_PORT, true)};
+    if (!OutputSocketFd)
+    {
+        return -1;
+    }
+
     // 拷贝 action/name（Buffer 可能随消息生命周期结束）
     const char* actionPtr = wsl::shared::string::FromSpan(Buffer, Message->ActionOffset);
     const char* namePtr = wsl::shared::string::FromSpan(Buffer, Message->NameOffset);
@@ -2940,7 +2947,7 @@ try
 
     const int ChildPid = UtilCreateChildProcess(
         "Snapshot",
-        [Message, action, name, Channel = wsl::shared::SocketChannel{std::move(SocketFd), "Snapshot"}]() mutable {
+        [Message, action, name, Channel = wsl::shared::SocketChannel{std::move(SocketFd), "Snapshot"}, OutputSocket = std::move(OutputSocketFd)]() mutable {
             int ResponseCode = -1;
             auto ReportStatus = wil::scope_exit([&]() {
                 LX_MINI_INIT_SNAPSHOT_RESPONSE_MESSAGE ResponseMessage{};
@@ -2949,6 +2956,10 @@ try
                 ResponseMessage.Header.MessageSize = sizeof(ResponseMessage);
                 Channel.SendMessage(ResponseMessage);
             });
+
+            // btrfs 命令输出（list 等）重定向到输出通道
+            THROW_LAST_ERROR_IF(TEMP_FAILURE_RETRY(dup2(OutputSocket.get(), STDOUT_FILENO)) < 0);
+            THROW_LAST_ERROR_IF(TEMP_FAILURE_RETRY(dup2(OutputSocket.get(), STDERR_FILENO)) < 0);
 
             // WSL-Plus: 快照逻辑委托给独立模块（btrfs 细节集中，见 wslplus_snapshot.h）
             const auto snapAction = wslplus_snapshot::ParseAction(action);

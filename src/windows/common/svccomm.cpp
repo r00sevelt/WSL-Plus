@@ -664,7 +664,21 @@ HRESULT
 wsl::windows::common::SvcComm::SnapshotDistribution(_In_ LPCGUID DistroGuid, _In_ LPCSTR action, _In_ LPCSTR name) const
 {
     ClientExecutionContext context;
-    RETURN_HR(m_userSession->SnapshotDistribution(DistroGuid, action, name, context.OutError()));
+
+    // WSL-Plus: list 动作的输出管道（照 ResizeDistribution 模式，转发到 stderr）
+    wil::unique_handle outputRead;
+    wil::unique_handle outputWrite;
+    THROW_IF_WIN32_BOOL_FALSE(CreatePipe(&outputRead, &outputWrite, nullptr, 0));
+
+    relay::ScopedRelay outputRelay(
+        std::move(outputRead), GetStdHandle(STD_ERROR_HANDLE), LX_RELAY_BUFFER_SIZE, [&outputWrite]() { outputWrite.reset(); });
+
+    const auto result = m_userSession->SnapshotDistribution(DistroGuid, outputWrite.get(), action, name, context.OutError());
+
+    outputWrite.reset();
+    outputRelay.Sync();
+
+    RETURN_HR(result);
 }
 
 HRESULT

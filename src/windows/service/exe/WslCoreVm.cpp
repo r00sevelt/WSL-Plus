@@ -2526,7 +2526,7 @@ void WslCoreVm::ResizeDistribution(_In_ ULONG Lun, _In_ HANDLE OutputHandle, _In
     }
 }
 
-void WslCoreVm::SnapshotDistribution(_In_ ULONG Lun, _In_ LPCSTR action, _In_ LPCSTR name)
+void WslCoreVm::SnapshotDistribution(_In_ ULONG Lun, _In_ HANDLE OutputHandle, _In_ LPCSTR action, _In_ LPCSTR name)
 {
     auto lock = m_lock.lock_exclusive();
 
@@ -2540,8 +2540,19 @@ void WslCoreVm::SnapshotDistribution(_In_ ULONG Lun, _In_ LPCSTR action, _In_ LP
 
     wsl::shared::SocketChannel channel{AcceptConnection(m_vmConfig.KernelBootTimeout), "Snapshot", {m_terminatingEvent.get()}};
 
-    const auto& resultMessage = channel.ReceiveMessage<LX_MINI_INIT_SNAPSHOT_RESPONSE_MESSAGE>();
-    THROW_HR_IF(E_FAIL, resultMessage.ResponseCode != 0);
+    // WSL-Plus: list 输出管道（照 ResizeDistribution 双 Accept 模式；OutputHandle 可空）
+    if (OutputHandle != nullptr)
+    {
+        auto outputChannel = AcceptConnection(m_vmConfig.KernelBootTimeout);
+        wsl::windows::common::relay::ScopedRelay outputRelay(std::move(outputChannel), OutputHandle);
+        const auto& resultMessage = channel.ReceiveMessage<LX_MINI_INIT_SNAPSHOT_RESPONSE_MESSAGE>();
+        THROW_HR_IF(E_FAIL, resultMessage.ResponseCode != 0);
+    }
+    else
+    {
+        const auto& resultMessage = channel.ReceiveMessage<LX_MINI_INIT_SNAPSHOT_RESPONSE_MESSAGE>();
+        THROW_HR_IF(E_FAIL, resultMessage.ResponseCode != 0);
+    }
 }
 
 void WslCoreVm::TrimDistribution(_In_ ULONG Lun)

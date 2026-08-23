@@ -191,7 +191,7 @@ public:
     IFACEMETHOD(ResizeDistribution)(_In_ LPCGUID DistroGuid, _In_ HANDLE OutputHandle, _In_ ULONG64 NewSize, _Out_ LXSS_ERROR_INFO* Error) override;
 
     // WSL-Plus: 快照命令（create|list|restore|delete）
-    IFACEMETHOD(SnapshotDistribution)(_In_ LPCGUID DistroGuid, _In_ LPCSTR Action, _In_ LPCSTR Name, _Out_ LXSS_ERROR_INFO* Error) override;
+    IFACEMETHOD(SnapshotDistribution)(_In_ LPCGUID DistroGuid, _In_ HANDLE OutputHandle, _In_ LPCSTR Action, _In_ LPCSTR Name, _Out_ LXSS_ERROR_INFO* Error) override;
 
     // WSL-Plus: 克隆（链接克隆=COW 差异盘 / FullClone=独立副本）
     IFACEMETHOD(CloneDistribution)(_In_ LPCGUID DistroGuid, _In_ LPCWSTR NewName, _In_ BOOLEAN FullClone, _Out_ LXSS_ERROR_INFO* Error) override;
@@ -479,7 +479,7 @@ public:
     ResizeDistribution(_In_ LPCGUID DistroGuid, _In_ HANDLE OutputHandle, _In_ ULONG64 NewSize);
 
     // WSL-Plus: 快照命令实现（路由至 utility VM 的 btrfs 快照模块）
-    SnapshotDistribution(_In_ LPCGUID DistroGuid, _In_ LPCSTR Action, _In_ LPCSTR Name);
+    SnapshotDistribution(_In_ LPCGUID DistroGuid, _In_ HANDLE OutputHandle, _In_ LPCSTR Action, _In_ LPCSTR Name);
 
     // WSL-Plus: 克隆实现（注册项复制 + 差异盘/独立副本 + 唯一化）
     CloneDistribution(_In_ LPCGUID DistroGuid, _In_ LPCWSTR NewName, _In_ BOOLEAN FullClone);

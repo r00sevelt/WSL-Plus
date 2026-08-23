@@ -251,8 +251,10 @@ interface ILxssUserSession : IUnknown
         [in, out] LXSS_ERROR_INFO* Error);
 
     // WSL-Plus: 快照命令（create|list|restore|delete），转发至 guest btrfs 子卷模块
+    // OutputHandle: list 动作的结果文本输出通道（照 ResizeDistribution 模式，可为空）
     HRESULT SnapshotDistribution(
         [in] LPCGUID DistroGuid,
+        [in, system_handle(sh_pipe)] HANDLE OutputHandle,
         [in, string] LPCSTR Action,
         [in, string] LPCSTR Name,
         [in, out] LXSS_ERROR_INFO* Error);
