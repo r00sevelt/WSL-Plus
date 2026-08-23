@@ -411,8 +411,10 @@ if (NOT VS_INSTALL_DIR)
     endif()
 endif()
 
+# WSL-Plus: 放宽 —— 找不到带 Clang 组件的 VS 不致命（CI/裸工具链环境），
+#         后续由 LLVM_INSTALL_DIR 定位兜底（PATH 中的 clang）。
 if (NOT VS_INSTALL_DIR)
-    message(FATAL_ERROR "Could not determine Visual Studio installation directory.")
+    message(WARNING "Visual Studio with C++ Clang component was not found; LLVM will be resolved from PATH.")
 endif()
 
 # Pick the first line returned from vswhere, in case multiple versions are returned.
@@ -425,8 +427,15 @@ else()
     set(LLVM_INSTALL_DIR "${VS_INSTALL_DIR}/VC/Tools/Llvm/${CMAKE_HOST_SYSTEM_PROCESSOR}/bin")
 endif()
 
-if (NOT EXISTS ${LLVM_INSTALL_DIR})
-    message(FATAL_ERROR "C++ Clang Compiler for Windows is not installed at ${LLVM_INSTALL_DIR}. Please install it from the Visual Studio Installer.")
+# WSL-Plus: LLVM 定位兜底 —— VS 组件路径不存在时回退到 PATH 中的 clang（CI/裸工具链场景）
+if (NOT LLVM_INSTALL_DIR OR NOT EXISTS ${LLVM_INSTALL_DIR})
+    find_program(WSLPLUS_CLANG_EXE clang)
+    if (WSLPLUS_CLANG_EXE)
+        get_filename_component(LLVM_INSTALL_DIR "${WSLPLUS_CLANG_EXE}" DIRECTORY)
+        message(STATUS "WSL-Plus: using clang from PATH: ${LLVM_INSTALL_DIR}")
+    else()
+        message(FATAL_ERROR "C++ Clang Compiler for Windows is not installed at ${LLVM_INSTALL_DIR} nor found in PATH. Please install it from the Visual Studio Installer.")
+    endif()
 endif()
 
 # Generate the clang-format script which contains a path to clang-format.exe
