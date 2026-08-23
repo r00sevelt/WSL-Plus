@@ -20,5 +20,7 @@ target_link_libraries(wslinstaller
                       common
                       legacy_stdio_definitions)
 
-target_precompile_headers(wslinstaller REUSE_FROM common)
+if (NOT WSL_DISABLE_PCH)
+    target_precompile_headers(wslinstaller REUSE_FROM common)
+endif()
 set_target_properties(wslinstaller PROPERTIES FOLDER windows)

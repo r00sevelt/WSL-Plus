@@ -27,7 +27,9 @@ target_link_libraries(wslclib
                       crypt32)
 
 
-target_precompile_headers(wslclib REUSE_FROM common)
+if (NOT WSL_DISABLE_PCH)
+    target_precompile_headers(wslclib REUSE_FROM common)
+endif()
 set_target_properties(wslclib PROPERTIES FOLDER windows)
 
 # Create wslc.exe

@@ -15,5 +15,7 @@ target_link_libraries(wslrelay
                       ${COMMON_LINK_LIBRARIES}
                       common)
 
-target_precompile_headers(wslrelay REUSE_FROM common)
+if (NOT WSL_DISABLE_PCH)
+    target_precompile_headers(wslrelay REUSE_FROM common)
+endif()
 set_target_properties(wslrelay PROPERTIES FOLDER windows)

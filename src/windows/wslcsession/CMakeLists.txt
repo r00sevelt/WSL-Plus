@@ -67,5 +67,7 @@ target_link_libraries(wslcsession
                       VirtDisk.lib
                       Crypt32.lib)
 
-target_precompile_headers(wslcsession REUSE_FROM common)
+if (NOT WSL_DISABLE_PCH)
+    target_precompile_headers(wslcsession REUSE_FROM common)
+endif()
 set_target_properties(wslcsession PROPERTIES FOLDER windows)

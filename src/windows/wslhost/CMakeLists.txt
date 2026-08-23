@@ -14,5 +14,7 @@ target_link_libraries(wslhost
                       common
                       runtimeobject.lib)
 
-target_precompile_headers(wslhost REUSE_FROM common)
+if (NOT WSL_DISABLE_PCH)
+    target_precompile_headers(wslhost REUSE_FROM common)
+endif()
 set_target_properties(wslhost PROPERTIES FOLDER windows)

@@ -8,7 +8,9 @@ target_include_directories(libwsl
     PUBLIC ${CMAKE_CURRENT_LIST_DIR})
 
 set_target_properties(libwsl PROPERTIES FOLDER windows)
-target_precompile_headers(libwsl REUSE_FROM common)
+if (NOT WSL_DISABLE_PCH)
+    target_precompile_headers(libwsl REUSE_FROM common)
+endif()
 
 target_link_libraries(libwsl
                       ${COMMON_LINK_LIBRARIES}

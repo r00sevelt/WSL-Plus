@@ -76,5 +76,7 @@ target_link_libraries(wslservice
                       Synchronization.lib
                       yaml-cpp)
 
-target_precompile_headers(wslservice REUSE_FROM common)
+if (NOT WSL_DISABLE_PCH)
+    target_precompile_headers(wslservice REUSE_FROM common)
+endif()
 set_target_properties(wslservice PROPERTIES FOLDER windows)

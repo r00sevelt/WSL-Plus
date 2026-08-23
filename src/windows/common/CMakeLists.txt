@@ -155,6 +155,11 @@ add_dependencies(common wslserviceidl wsldevicehostidl localization wslservicemc
 # WSL-Plus 本地改动: 可禁用 PCH（大 PCH 在编译期触发 C3859/C1076 虚拟内存限制）
 if (NOT WSL_DISABLE_PCH)
     target_precompile_headers(common PRIVATE precomp.h)
+else()
+    # PCH 禁用时用 /FI 强制包含 precomp.h —— 复现"头先行"效果，消除
+    # 依赖 PCH 掩盖的 include 顺序缺陷（如 DnsResolver.cpp 先 include LxssDynamicFunction.h），
+    # 同时保持每编译单元内存平摊（无巨型 PCH 单次内存需求）
+    target_compile_options(common PRIVATE "/FI${CMAKE_CURRENT_SOURCE_DIR}/precomp.h")
 endif()
 set_target_properties(common PROPERTIES FOLDER windows)
 target_include_directories(common PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/../service/mc/${TARGET_PLATFORM}/${CMAKE_BUILD_TYPE})

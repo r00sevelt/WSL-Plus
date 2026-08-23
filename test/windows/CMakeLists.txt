@@ -36,7 +36,9 @@ target_include_directories(wsltests PRIVATE
     ${CMAKE_SOURCE_DIR}/src/windows/WslcSDK
     ${CMAKE_BINARY_DIR}/src/windows/WslcSDK/winrt/${TARGET_PLATFORM}/${CMAKE_BUILD_TYPE})
 target_link_directories(wsltests PRIVATE ${BIN})
-target_precompile_headers(wsltests REUSE_FROM common)
+if (NOT WSL_DISABLE_PCH)
+    target_precompile_headers(wsltests REUSE_FROM common)
+endif()
 target_link_libraries(wsltests
                       common
                       wslclib
