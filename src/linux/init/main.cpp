@@ -2950,26 +2950,16 @@ try
                 Channel.SendMessage(ResponseMessage);
             });
 
-            std::string CommandLine;
-            if (action == "create")
+            // WSL-Plus: 快照逻辑委托给独立模块（btrfs 细节集中，见 wslplus_snapshot.h）
+            const auto snapAction = wslplus_snapshot::ParseAction(action);
+            if (snapAction == wslplus_snapshot::Action::Unknown)
             {
-                std::string snapName = name.empty() ? std::format("auto-{}", getpid()) : name;
-                CommandLine = std::format("/usr/bin/btrfs subvolume snapshot / '/@snap-{}'", snapName);
+                THROW_ERRNO(EINVAL);
             }
-            else if (action == "list")
-            {
-                CommandLine = "/usr/bin/btrfs subvolume list -p /";
-            }
-            else if (action == "delete")
-            {
-                CommandLine = std::format("/usr/bin/btrfs subvolume delete '/@snap-{}'", name);
-            }
-            else if (action == "restore")
-            {
-                // WSL-Plus v0.1: 回滚 = 标记重启后生效（init 启动阶段做子卷交换），先落盘标记
-                CommandLine = std::format("touch '/run/wslplus-rollback-{}'", name);
-            }
-            else
+
+            const std::string snapName = name.empty() ? wslplus_snapshot::DefaultSnapshotName() : name;
+            const std::string CommandLine = wslplus_snapshot::BuildCommand(snapAction, snapName);
+            if (CommandLine.empty())
             {
                 THROW_ERRNO(EINVAL);
             }
