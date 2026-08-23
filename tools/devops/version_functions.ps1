@@ -25,9 +25,10 @@ function Get-VersionInfo
     if ($LastExitCode -ne 0)
     {
         # WSL-Plus: 无 tag 时 fallback（本地/CI 首次构建场景，标签未推送）
-        # 输出对齐 git describe 结构: <tag>-<commitCount>-g<shortSha>；tag 用四段数字满足 PACKAGE_VERSION 校验
+        # 输出对齐 git describe 结构: <tag(三段)>-<commitCount>-g<shortSha>（微软 tag 为三段，
+        # version 解析: tag(三段) + commitCount → 四段版本过 PACKAGE_VERSION 校验）
         $shortSha = (git.exe rev-parse --short HEAD 2>$null).Trim()
-        $output = "0.0.0.1-0-g" + $shortSha
+        $output = "1.0.0-0-g" + $shortSha
         if ([string]::IsNullOrWhiteSpace($shortSha))
         {
             throw "git describe failed and fallback failed: $LastExitCode"
