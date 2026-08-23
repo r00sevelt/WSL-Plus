@@ -24,7 +24,12 @@ function Get-VersionInfo
     $output = git.exe describe --tags --match *.*.* --abbrev=1
     if ($LastExitCode -ne 0)
     {
-        throw "git describe exited with error status: $LastExitCode. Make sure the main branch and tags are available."
+        # WSL-Plus: 无 tag 时 fallback（本地/CI 首次构建场景，标签未推送）
+        $output = "0.0.0-dev-" + (git.exe rev-parse --short HEAD 2>$null).Trim()
+        if ([string]::IsNullOrWhiteSpace($output))
+        {
+            throw "git describe failed and fallback failed: $LastExitCode"
+        }
     }
 
     $versionInfo = $output.split('-')
