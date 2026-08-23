@@ -77,6 +77,10 @@ target_link_libraries(wslservice
                       yaml-cpp)
 
 if (NOT WSL_DISABLE_PCH)
+    if (NOT WSL_DISABLE_PCH)
     target_precompile_headers(wslservice REUSE_FROM common)
+else()
+    target_compile_options(wslservice PRIVATE "/FI${CMAKE_CURRENT_SOURCE_DIR}/../common/precomp.h")
+endif()
 endif()
 set_target_properties(wslservice PROPERTIES FOLDER windows)
