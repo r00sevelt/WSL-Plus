@@ -157,7 +157,30 @@ std::optional<int> Dispatch(_In_ const std::wstring& commandLine)
         }
 
         const std::wstring_view netAction(argv[2]);
-        if (netAction == L"ls")
+        if (netAction == L"show")
+        {
+            if (argc < 4)
+            {
+                wsl::windows::common::wslutil::PrintMessage(L"用法: wsl network show <name>");
+                return -1;
+            }
+            const auto networks = wsl::windows::common::wslplus::networks::Load();
+            auto it = std::find_if(networks.begin(), networks.end(), [&](const auto& n) { return n.name == argv[3]; });
+            if (it == networks.end())
+            {
+                wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus: 网络不存在");
+                return -1;
+            }
+            wsl::windows::common::wslutil::PrintMessage(
+                std::format(L"{} ({})  {}  dns={}  ports={}", it->name, it->type, it->cidr, it->dns, it->ports.size()));
+            for (const auto& p : it->ports)
+            {
+                wsl::windows::common::wslutil::PrintMessage(
+                    std::format(L"  {}:{} -> guest:{}", p.hostIp, p.hostPort, p.guestPort));
+            }
+            return 0;
+        }
+        else if (netAction == L"ls")
         {
             const auto networks = wsl::windows::common::wslplus::networks::Load();
             for (const auto& n : networks)
