@@ -457,13 +457,14 @@ std::optional<int> Dispatch(_In_ const std::wstring& commandLine)
         }
         else if (devAction == L"rm")
         {
+            // 安全说明: 仅删除登记记录（不触碰硬件/驱动/Windows 侧）
             if (argc < 4)
             {
-                wsl::windows::common::wslutil::PrintMessage(L"用法: wsl device rm <id>");
+                wsl::windows::common::wslutil::PrintMessage(L"用法: wsl device rm <id>（仅清理登记，不碰硬件）");
                 return -1;
             }
             wsl::windows::common::wslplus::devices::Remove(argv[3]);
-            wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus 设备已删除");
+            wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus 设备登记已删除");
             return 0;
         }
         else if (devAction == L"auto")
@@ -475,6 +476,19 @@ std::optional<int> Dispatch(_In_ const std::wstring& commandLine)
             }
             wsl::windows::common::wslplus::devices::SetPolicy(argv[3], wsl::windows::common::wslplus::devices::Policy::Auto, argv[4]);
             wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus 设备已设为自动共享");
+            return 0;
+        }
+        else if (devAction == L"eject")
+        {
+            // D 组安全语义: 归还 Windows（弹出式取消挂载）——
+            // 优雅释放（通道层接入后将先停用 guest 侧）→ 松绑到 manual 无实例
+            if (argc < 4)
+            {
+                wsl::windows::common::wslutil::PrintMessage(L"用法: wsl device eject <id>（归还 Windows，类似弹出 U 盘）");
+                return -1;
+            }
+            wsl::windows::common::wslplus::devices::SetPolicy(argv[3], wsl::windows::common::wslplus::devices::Policy::Manual, L"");
+            wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus: 设备已归还 Windows（可再 attach 挂载）");
             return 0;
         }
     }
