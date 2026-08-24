@@ -49,6 +49,7 @@ set(SOURCES
     WSLPlusNetworks.cpp
     WSLPlusImages.cpp
     WSLPlusDevices.cpp
+    WSLPlusUsb.cpp
     WslCoreFirewallSupport.cpp
     WslCoreHostDnsInfo.cpp
     WslCoreNetworkEndpointSettings.cpp
