@@ -210,6 +210,10 @@ std::optional<int> Dispatch(_In_ const std::wstring& commandLine)
                 {
                     cfg.cidr = wsl::windows::common::string::WideToMultiByte(argv[++i]);
                 }
+                else if (std::wstring_view(argv[i]) == L"--vlan" && i + 1 < argc)
+                {
+                    cfg.vlan = _wtoi(argv[++i]);
+                }
             }
 
             try

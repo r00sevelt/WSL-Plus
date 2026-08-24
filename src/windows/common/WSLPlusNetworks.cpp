@@ -45,6 +45,10 @@ static std::vector<NetworkConfig> ParseDocument(const YAML::Node& root)
         cfg.type = node["type"].as<std::string>("nat");
         cfg.cidr = node["cidr"].as<std::string>("");
         cfg.dns = node["dns"].as<std::string>("");
+        if (node["vlan"])
+        {
+            cfg.vlan = node["vlan"].as<int>();
+        }
 
         if (node["ports"])
         {
@@ -121,6 +125,10 @@ void Save(const NetworkConfig& config)
         if (!cfg.dns.empty())
         {
             node["dns"] = cfg.dns;
+        }
+        if (cfg.vlan.has_value())
+        {
+            node["vlan"] = *cfg.vlan;
         }
         if (!cfg.ports.empty())
         {

@@ -37,6 +37,7 @@ namespace wsl::windows::common::wslplus::networks
         std::string type = "nat"; // nat | bridge | host-only
         std::string cidr;         // 如 192.168.100.0/24
         std::string dns;          // 如 192.168.100.1
+        std::optional<int> vlan;  // C6: VLAN id（guest 侧 vlan 子接口，服务端透明）
         std::vector<NetworkPortMapping> ports;
         bool operator==(const NetworkConfig&) const = default;
     };
