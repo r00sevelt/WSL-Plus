@@ -15,6 +15,7 @@ Abstract:
 
 #include "precomp.h"
 #include "WSLPlusCommands.h"
+#include "WSLPlusNetworks.h"
 
 namespace wsl::windows::common::wslplus
 {
