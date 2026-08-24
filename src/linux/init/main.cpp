@@ -210,6 +210,7 @@ int StartExtraDhcpClients(int DhcpTimeout);
 void ApplyAclRules();
 void ApplyQosRules();
 void ApplyStaticAddresses();
+void ApplyTunnels();
 
 int StartGuestNetworkService(int GnsFd, wil::unique_fd&& DnsTunnelingFd, uint32_t DnsTunnelingIpAddress);
 
@@ -1129,6 +1130,38 @@ void ApplyAclRules()
                 dport.empty() ? "" : std::format("--dport {}", dport).c_str(),
                 action == "accept" ? "ACCEPT" : "DROP").c_str(), nullptr);
         }
+    }
+    fclose(f);
+}
+
+// WSL-Plus C9-v0.1: VXLAN 隧道（OVN/分布式网络的基础数据面）
+// /etc/wslplus-tunnel.conf 行格式: "<phyIface> <vni> <remoteIp>"（例: eth1 100 10.9.9.1）
+// 创建 <phyIface>.vx<VNI> 隧道接口（UDP 4789），OVN 化控制面在文档 C9-OVN-DESIGN.md
+void ApplyTunnels()
+{
+    const std::string confPath = "/etc/wslplus-tunnel.conf";
+    FILE* f = fopen(confPath.c_str(), "r");
+    if (!f)
+    {
+        return;
+    }
+
+    char line[160]{};
+    while (fgets(line, sizeof(line), f) != nullptr)
+    {
+        std::istringstream parts{line};
+        std::string iface, remote;
+        int vni = 0;
+        if (!(parts >> iface >> vni >> remote) || vni < 1 || vni > 16777215)
+        {
+            continue;
+        }
+
+        const std::string vxIface = std::format("{}.vx{}", iface, vni);
+        UtilExecCommandLine(std::format(
+            "ip link add '{}' type vxlan id {} dev '{}' remote {} dstport 4789 2>/dev/null || "
+            "ip link replace '{}' type vxlan id {} dev '{}' remote {} dstport 4789 && ip link set '{}' up",
+            vxIface, vni, iface, remote, vxIface, vni, iface, remote, vxIface).c_str(), nullptr);
     }
     fclose(f);
 }
@@ -3633,6 +3666,8 @@ try
             ApplyQosRules();
             // WSL-Plus C5: 静态地址（/etc/wslplus-static.conf，DHCP 之外的企业网络固定地址出口）
             ApplyStaticAddresses();
+            // WSL-Plus C9: VXLAN 隧道（/etc/wslplus-tunnel.conf —— OVN 数据面基础）
+            ApplyTunnels();
         }
 
         if (SetEphemeralPortRange(NetworkingConfiguration->EphemeralPortRangeStart, NetworkingConfiguration->EphemeralPortRangeEnd) < 0)
