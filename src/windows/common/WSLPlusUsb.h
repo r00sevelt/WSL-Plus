@@ -25,6 +25,7 @@ namespace wsl::windows::common::wslplus::usb
     enum class BackendKind
     {
         Usbipd,
+        Usbredir, // 预留: QEMU/SPICE 生态协议（Win 侧无官方 usbredirserver, 见 USBDEV-STUDY.md）
     };
 
     // 后端接口（未来 switch/plugin 式扩展 usbredir/winusb）
@@ -50,6 +51,9 @@ namespace wsl::windows::common::wslplus::usb
 
     // 构造默认后端（v1 = usbipd-win 进程封装）
     std::unique_ptr<IUsbBackend> CreateDefault();
+
+    // 构造 usbredir 后端（预留——实现到位前返回未可用；详见 docs/USBDEV-STUDY.md）
+    std::unique_ptr<IUsbBackend> CreateUsbredir();
 
     // D1-2: 热插拔 Watch 回调（diff 出"新出现的设备"时被调用；返回 false=终止 watch）
     using WatchCallback = std::function<bool(_In_ const std::string& busId)>;

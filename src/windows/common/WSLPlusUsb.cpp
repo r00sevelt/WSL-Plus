@@ -66,6 +66,37 @@ namespace
         return wsl::windows::common::string::MultiByteToWide(output);
     }
 
+    // usbredir 后端（预留）: Windows 宿主无官方 usbredirserver 运行时;
+    // 接齐运行时（或改用 libusb/WinUSB 直通后端）前，本后端返回"不可用"。
+    class UsbredirBackend final : public IUsbBackend
+    {
+    public:
+        BackendKind Kind() const noexcept override
+        {
+            return BackendKind::Usbredir;
+        }
+
+        bool Available() const noexcept override
+        {
+            return false; // 待 Win 侧运行时（文档: docs/USBDEV-STUDY.md）
+        }
+
+        std::vector<std::string> Enumerate() const override
+        {
+            THROW_HR(E_NOTIMPL);
+        }
+
+        void Attach(_In_ const std::string&, _In_ const GUID&) override
+        {
+            THROW_HR(E_NOTIMPL);
+        }
+
+        void Detach(_In_ const std::string&) override
+        {
+            THROW_HR(E_NOTIMPL);
+        }
+    };
+
     class UsbipdBackend final : public IUsbBackend
     {
     public:
@@ -118,6 +149,11 @@ namespace
 std::unique_ptr<IUsbBackend> CreateDefault()
 {
     return std::make_unique<UsbipdBackend>();
+}
+
+std::unique_ptr<IUsbBackend> CreateUsbredir()
+{
+    return std::make_unique<UsbredirBackend>();
 }
 
 void WatchLoop(_In_ const std::unique_ptr<IUsbBackend>& backend, _In_ int intervalSeconds, _In_ const WatchCallback& onNewDevice)
