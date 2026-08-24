@@ -401,7 +401,7 @@ std::optional<int> Dispatch(_In_ const std::wstring& commandLine)
         if (argc < 3)
         {
             wsl::windows::common::wslutil::PrintMessage(
-                L"用法: wsl device list | wsl device add <id> <type usb|serial|parallel> <host> [--instance x --policy auto|manual|dedicated] | wsl device rm <id>");
+                L"用法: wsl device list | wsl device add <id> <type usb|serial(COM串口)|parallel(LPT并口)> <host> [--instance x --policy auto|manual|dedicated] | wsl device rm <id>");
             return 0;
         }
 
