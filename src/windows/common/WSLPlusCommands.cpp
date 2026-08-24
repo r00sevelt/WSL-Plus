@@ -18,6 +18,7 @@ Abstract:
 #include "WSLPlusNetworks.h"
 #include "WSLPlusImages.h"
 #include "WSLPlusDevices.h"
+#include "WSLPlusUsb.h"
 
 namespace wsl::windows::common::wslplus
 {
@@ -504,6 +505,31 @@ std::optional<int> Dispatch(_In_ const std::wstring& commandLine)
 
             wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus: 该类型通道（usb/parallel）尚未接通（serial 已可用）");
             return -1;
+        }
+        else if (devAction == L"watch")
+        {
+            // D1-2: 热插拔守护（Ctrl+C 退出）—— new USB 设备 → 匹配 auto 策略登记 → 自动 attach
+            wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus: USB 热插拔守护启动（Ctrl+C 停止）");
+            auto backend = wsl::windows::common::wslplus::usb::CreateDefault();
+            wsl::windows::common::wslplus::usb::WatchLoop(
+                backend, 5,
+                [](const std::string& busId) -> bool
+                {
+                    const auto devices = wsl::windows::common::wslplus::devices::Load();
+                    auto it = std::find_if(devices.begin(), devices.end(), [&](const auto& d)
+                                           { return d.type == "usb" && d.hostPath == busId && d.policy == wsl::windows::common::wslplus::devices::Policy::Auto && !d.instance.empty(); });
+                    if (it == devices.end())
+                    {
+                        return true;
+                    }
+
+                    wsl::windows::common::SvcComm service;
+                    const auto distroId = service.GetDistributionId(it->instance.c_str());
+                    // 后端 attach: busId 直传（usbipd 侧通常需要 DEVICE_ID；busId 兼容 usbipd list 输出）
+                    wsl::windows::common::wslplus::usb::CreateDefault()->Attach(busId, distroId);
+                    return true;
+                });
+            return 0;
         }
         else if (devAction == L"eject")
         {

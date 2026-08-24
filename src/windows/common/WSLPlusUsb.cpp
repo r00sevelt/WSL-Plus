@@ -119,4 +119,52 @@ std::unique_ptr<IUsbBackend> CreateDefault()
 {
     return std::make_unique<UsbipdBackend>();
 }
+
+void WatchLoop(_In_ const std::unique_ptr<IUsbBackend>& backend, _In_ int intervalSeconds, _In_ const WatchCallback& onNewDevice)
+{
+    std::vector<std::string> lastSeen;
+    if (backend->Available())
+    {
+        try
+        {
+            lastSeen = backend->Enumerate();
+        }
+        CATCH_LOG()
+    }
+
+    for (;;)
+    {
+        std::this_thread::sleep_for(std::chrono::seconds(intervalSeconds));
+
+        if (!backend->Available())
+        {
+            continue;
+        }
+
+        std::vector<std::string> current;
+        try
+        {
+            current = backend->Enumerate();
+        }
+        CATCH_LOG()
+        if (current.empty() && lastSeen.empty())
+        {
+            continue;
+        }
+
+        // diff: 新出现的设备
+        for (const auto& busId : current)
+        {
+            if (std::find(lastSeen.begin(), lastSeen.end(), busId) == lastSeen.end())
+            {
+                if (!onNewDevice(busId))
+                {
+                    return;
+                }
+            }
+        }
+
+        lastSeen = std::move(current);
+    }
+}
 } // namespace wsl::windows::common::wslplus::usb

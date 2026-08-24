@@ -50,4 +50,11 @@ namespace wsl::windows::common::wslplus::usb
 
     // 构造默认后端（v1 = usbipd-win 进程封装）
     std::unique_ptr<IUsbBackend> CreateDefault();
+
+    // D1-2: 热插拔 Watch 回调（diff 出"新出现的设备"时被调用；返回 false=终止 watch）
+    using WatchCallback = std::function<bool(_In_ const std::string& busId)>;
+
+    // 轮询守护（intervalSeconds 一次; 检测到新设备（相对上次快照）→ 调用回调）
+    // 职责: 纯事件探测; "何时 attach/给谁"由回调实现（策略层接入 devices.yaml）
+    void WatchLoop(_In_ const std::unique_ptr<IUsbBackend>& backend, _In_ int intervalSeconds, _In_ const WatchCallback& onNewDevice);
 }
