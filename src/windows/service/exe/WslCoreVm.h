@@ -101,6 +101,10 @@ public:
     // WSL-Plus C4b1: 额外网络适配器（networks.yaml attachments 的 bridge 网络 → HCN 端点 attach）
     void ApplyExtraNetworkAdapters();
 
+    // WSL-Plus D2-1: 串口重定向（宿主 COM ↔ guest ttySx，HCS ComPort 命名管道桥）
+    void AttachSerialPort(_In_ LPCWSTR hostComName);
+    void DetachSerialPort();
+
     int GetVmIdleTimeout() const;
 
     bool InitializeDrvFs(_In_ HANDLE UserToken);
@@ -290,6 +294,9 @@ private:
     std::wstring m_exitDetails;
     std::wstring m_machineId;
     std::wstring m_instanceName; // WSL-Plus: 分发名（networks.yaml attachments 键）
+    std::wstring m_serialPipeName;                       // D2-1: 串口命名管道名
+    std::thread m_serialBridgeThread;                     // D2-1: 串口桥线程
+    std::atomic<bool> m_serialBridgeStop{false};
     GUID m_runtimeId;
     wsl::core::Config m_vmConfig;
     InitializeDrvFsCallback m_initializeDrvFs;

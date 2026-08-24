@@ -1466,6 +1466,100 @@ void WslCoreVm::FreeLun(_In_ ULONG lun)
     m_lunBitmap.set(lun, false);
 }
 
+// WSL-Plus D2-1: 串口重定向（宿主 COM ↔ guest ttySx）
+// 机制: HCS ComPort 指向服务端命名管道（ModifyComputeSystem Add）→ 桥线程做 COM↔pipe 双向转发
+void WslCoreVm::AttachSerialPort(_In_ LPCWSTR hostComName)
+{
+    auto lock = m_lock.lock_exclusive();
+
+    m_serialPipeName = L"\\\\.\\pipe\\wslplus-serial-" + m_machineId;
+    m_serialBridgeStop = false;
+
+    // 服务端创建命名管道（HCS 的 ComPort 将连到它）
+    auto pipe = CreateNamedPipeW(
+        m_serialPipeName.c_str(), PIPE_ACCESS_DUPLEX, PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
+        1, 64 * 1024, 64 * 1024, 0, nullptr);
+    THROW_LAST_ERROR_IF(pipe == INVALID_HANDLE_VALUE);
+
+    // Modify Add: VirtualMachine/Devices/ComPorts/{index}
+    hcs::ModifySettingRequest<hcs::ComPort> request{};
+    request.ResourcePath = L"VirtualMachine/Devices/ComPorts/1"; // 1..N: 0 是调试控制台预留
+    request.RequestType = wsl::shared::hns::ModifyRequestType::Add;
+    request.Settings.NamedPipe = m_serialPipeName;
+    wsl::windows::common::hcs::ModifyComputeSystem(m_system.get(), wsl::shared::ToJsonW(request).c_str());
+
+    // 桥线程: COM 口 ↔ 管道双向（64K 双缓冲,阻塞 IO）
+    m_serialBridgeThread = std::thread([this, hostComName = std::wstring(hostComName), pipe]() mutable {
+        auto hostCom = CreateFileW(hostComName.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, 0, nullptr);
+        if (hostCom == INVALID_HANDLE_VALUE)
+        {
+            CloseHandle(pipe);
+            return;
+        }
+        DCB dcb{};
+        GetCommState(hostCom, &dcb);
+        dcb.DCBlength = sizeof(dcb);
+        dcb.BaudRate = 115200;
+        dcb.ByteSize = 8;
+        dcb.StopBits = ONESTOPBIT;
+        SetCommState(hostCom, &dcb);
+        SetCommTimeouts(hostCom, []() { COMMTIMEOUTS t{100, 0, 0, 0, 0}; return t; }());
+
+        wil::unique_handle pipeHandle(pipe);
+        wil::unique_handle comHandle(hostCom);
+        const auto ok = ConnectNamedPipe(pipeHandle.get(), nullptr) || GetLastError() == ERROR_PIPE_CONNECTED;
+        if (!ok)
+        {
+            return;
+        }
+
+        std::array<char, 4096> buf{};
+        while (!m_serialBridgeStop.load())
+        {
+            DWORD read = 0;
+            if (ReadFile(comHandle.get(), buf.data(), static_cast<DWORD>(buf.size()), &read, nullptr) && read > 0)
+            {
+                DWORD written = 0;
+                WriteFile(pipeHandle.get(), buf.data(), read, &written, nullptr);
+            }
+            DWORD pipeRead = 0;
+            if (ReadFile(pipeHandle.get(), buf.data(), static_cast<DWORD>(buf.size()), &pipeRead, nullptr) && pipeRead > 0)
+            {
+                DWORD written = 0;
+                WriteFile(comHandle.get(), buf.data(), pipeRead, &written, nullptr);
+            }
+        }
+        DisconnectNamedPipe(pipeHandle.get());
+    });
+}
+
+void WslCoreVm::DetachSerialPort()
+{
+    auto lock = m_lock.lock_exclusive();
+
+    if (!m_serialPipeName.empty())
+    {
+        m_serialBridgeStop = true;
+        if (m_serialBridgeThread.joinable())
+        {
+            m_serialBridgeThread.join();
+        }
+
+        try
+        {
+            hcs::ModifySettingRequest<hcs::ComPort> request{};
+            request.ResourcePath = L"VirtualMachine/Devices/ComPorts/1";
+            request.RequestType = wsl::shared::hns::ModifyRequestType::Remove;
+            request.Settings.NamedPipe = m_serialPipeName;
+            wsl::windows::common::hcs::ModifyComputeSystem(m_system.get(), wsl::shared::ToJsonW(request).c_str());
+        }
+        CATCH_LOG()
+
+        m_serialPipeName.clear();
+        m_serialBridgeStop = false;
+    }
+}
+
 // WSL-Plus C4b1: 额外网络适配器
 // 机制（与微软同构）: vNIC 不走静态 HCS JSON —— HCN 端点动态创建 + ModifyComputeSystem(Add) attach；
 // guest 侧 vmbus/virtio-net 自动枚举出 eth1/eth2…
