@@ -268,6 +268,45 @@ std::optional<int> Dispatch(_In_ const std::wstring& commandLine)
             wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus: 网络已解绑");
             return 0;
         }
+        else if (netAction == L"ports-on")
+        {
+            // C3b: 应用实例关联网络的 ports（宿主监听 → VM 转发）
+            if (argc < 4)
+            {
+                wsl::windows::common::wslutil::PrintMessage(L"用法: wsl network ports-on <instance>");
+                return -1;
+            }
+
+            const auto allNetworks = wsl::windows::common::wslplus::networks::Load();
+            const auto attached = wsl::windows::common::wslplus::networks::Attachments(argv[3]);
+
+            nlohmann::json portsJson = nlohmann::json::array();
+            for (const auto& netName : attached)
+            {
+                auto it = std::find_if(allNetworks.begin(), allNetworks.end(), [&](const auto& n) { return n.name == netName; });
+                if (it == allNetworks.end())
+                {
+                    continue;
+                }
+                for (const auto& p : it->ports)
+                {
+                    portsJson.push_back({{"hostPort", p.hostPort}, {"guestPort", p.guestPort}, {"bindingIp", p.hostIp}});
+                }
+            }
+
+            wsl::windows::common::SvcComm service;
+            const auto distroId = service.GetDistributionId(argv[3]);
+            const std::string jsonText = portsJson.dump();
+            const HRESULT result = service.ApplyPortMappings(&distroId, jsonText.c_str());
+            if (FAILED(result))
+            {
+                wsl::windows::common::wslutil::PrintMessage(wsl::windows::common::wslutil::GetSystemErrorString(result));
+                return -1;
+            }
+
+            wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus: 端口映射已启用");
+            return 0;
+        }
     }
 
     //
