@@ -689,6 +689,13 @@ wsl::windows::common::SvcComm::CloneDistribution(_In_ LPCGUID DistroGuid, _In_ L
 }
 
 HRESULT
+wsl::windows::common::SvcComm::ApplyPortMappings(_In_ LPCGUID DistroGuid, _In_ LPCSTR portsJson) const
+{
+    ClientExecutionContext context;
+    RETURN_HR(m_userSession->ApplyPortMappings(DistroGuid, portsJson, context.OutError()));
+}
+
+HRESULT
 wsl::windows::common::SvcComm::SetVersion(_In_ LPCGUID DistroGuid, _In_ ULONG Version) const
 {
     ClientExecutionContext context;

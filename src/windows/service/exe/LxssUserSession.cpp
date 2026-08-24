@@ -508,6 +508,14 @@ try
     return session->CloneDistribution(DistroGuid, NewName, FullClone);
 }
 CATCH_RETURN(Error)
+
+HRESULT STDMETHODCALLTYPE LxssUserSession::ApplyPortMappings(_In_ LPCGUID DistroGuid, _In_ LPCSTR PortsJson, _Out_ LXSS_ERROR_INFO* Error)
+try
+{
+    const auto session = FindOrCreateUserSession(false);
+    return session->ApplyPortMappings(DistroGuid, PortsJson);
+}
+CATCH_RETURN(Error)
 CATCH_RETURN()
 
 HRESULT STDMETHODCALLTYPE LxssUserSession::CompactDistribution(_In_ LPCGUID DistroGuid, _Out_ LXSS_ERROR_INFO* Error)
@@ -1891,6 +1899,24 @@ try
 
     auto cleanup = wil::scope_exit_log(WI_DIAGNOSTICS_INFO, [&] { m_utilityVm->EjectVhd(vhdPath.c_str()); });
     m_utilityVm->SnapshotDistribution(lun, OutputHandle, Action, Name);
+    return S_OK;
+}
+CATCH_RETURN()
+
+// WSL-Plus: 端口映射应用（C3b-1 接口管线段；宿主监听+relay 在 C3b-2 实现）
+HRESULT LxssUserSessionImpl::ApplyPortMappings(_In_ LPCGUID DistroGuid, _In_ LPCSTR PortsJson)
+try
+{
+    std::lock_guard lock(m_instanceLock);
+    const auto userToken = wsl::windows::common::security::GetUserToken(TokenImpersonation);
+    const wil::unique_hkey lxssKey = s_OpenLxssUserKey(userToken.get());
+    const auto registration = DistributionRegistration::Open(lxssKey.get(), *DistroGuid);
+    const auto configuration = s_GetDistributionConfiguration(registration);
+    RETURN_HR_IF(WSL_E_WSL2_NEEDED, WI_IsFlagClear(configuration.Flags, LXSS_DISTRO_FLAGS_VM_MODE));
+
+    // C3b-2: 解析 PortsJson → 宿主监听 → LaunchPortRelay（VmId=m_utilityVm->GetRuntimeId()）
+    // 当前骨架记录配置，未启用转发（下一步完成）
+    (void)PortsJson;
     return S_OK;
 }
 CATCH_RETURN()

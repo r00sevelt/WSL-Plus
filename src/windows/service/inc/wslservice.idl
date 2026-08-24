@@ -267,6 +267,12 @@ interface ILxssUserSession : IUnknown
         [in] BOOLEAN FullClone,
         [in, out] LXSS_ERROR_INFO* Error);
 
+    // WSL-Plus: 端口映射应用（JSON: [{hostPort,guestPort,bindingIp}]，Networks 模型 ports 序列化）
+    HRESULT ApplyPortMappings(
+        [in] LPCGUID DistroGuid,
+        [in, string] LPCSTR PortsJson,
+        [in, out] LXSS_ERROR_INFO* Error);
+
     HRESULT SetDefaultDistribution(
         [in] LPCGUID DistroGuid,
         [in, out] LXSS_ERROR_INFO* Error);

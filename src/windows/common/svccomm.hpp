@@ -97,6 +97,10 @@ public:
     HRESULT
     CloneDistribution(_In_ LPCGUID DistroGuid, _In_ LPCWSTR NewName, _In_ BOOLEAN FullClone) const;
 
+    // WSL-Plus: 端口映射应用（JSON ports 列表 → 宿主监听+转发）
+    HRESULT
+    ApplyPortMappings(_In_ LPCGUID DistroGuid, _In_ LPCSTR portsJson) const;
+
     HRESULT
     CompactDistribution(_In_ LPCGUID DistroGuid) const;
 

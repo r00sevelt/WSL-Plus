@@ -196,6 +196,9 @@ public:
     // WSL-Plus: 克隆（链接克隆=COW 差异盘 / FullClone=独立副本）
     IFACEMETHOD(CloneDistribution)(_In_ LPCGUID DistroGuid, _In_ LPCWSTR NewName, _In_ BOOLEAN FullClone, _Out_ LXSS_ERROR_INFO* Error) override;
 
+    // WSL-Plus: 端口映射应用
+    IFACEMETHOD(ApplyPortMappings)(_In_ LPCGUID DistroGuid, _In_ LPCSTR PortsJson, _Out_ LXSS_ERROR_INFO* Error) override;
+
     /// <summary>
     /// Compacts the virtual disk of a distribution.
     /// </summary>
@@ -485,6 +488,10 @@ public:
     // WSL-Plus: 克隆实现（注册项复制 + 差异盘/独立副本 + 唯一化）
     HRESULT
     CloneDistribution(_In_ LPCGUID DistroGuid, _In_ LPCWSTR NewName, _In_ BOOLEAN FullClone);
+
+    // WSL-Plus: 端口映射应用（宿主监听+relay，实现见 C3b-2）
+    HRESULT
+    ApplyPortMappings(_In_ LPCGUID DistroGuid, _In_ LPCSTR PortsJson);
 
     /// <summary>
     /// Compacts the disk of a distribution.
