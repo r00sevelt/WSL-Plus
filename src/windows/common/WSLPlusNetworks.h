@@ -55,4 +55,9 @@ namespace wsl::windows::common::wslplus::networks
 
     // 校验器（名称唯一/src 合法/端口范围），供 CLI 与未来 HCN 层复用
     void Validate(const NetworkConfig& config);
+
+    // C4a: 实例-网络绑定关系（instance -> [network names]）
+    std::vector<std::string> Attachments(const std::string& instance);
+    void Attach(const std::string& instance, const std::string& network);
+    void Detach(const std::string& instance, const std::string& network);
 }

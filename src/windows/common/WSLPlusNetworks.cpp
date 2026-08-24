@@ -173,4 +173,90 @@ void Remove(const std::string& name)
     THROW_LAST_ERROR_IF(!out);
     out << root;
 }
+
+// ---------- C4a: 实例-网络绑定 ----------
+namespace
+{
+    // attachments 区域: { "<instance>": [net1, net2, ...] }
+    YAML::Node ReadAttachmentsNode()
+    {
+        YAML::Node root{};
+        const auto path = ConfigPath();
+        if (std::filesystem::exists(path))
+        {
+            root = YAML::LoadFile(path.string());
+        }
+        return root["attachments"] ? root["attachments"] : YAML::Node(YAML::NodeType::Map);
+    }
+
+    void SaveAttachmentsNode(const YAML::Node& attachments)
+    {
+        auto root = YAML::Node(YAML::NodeType::Map);
+        const auto path = ConfigPath();
+        if (std::filesystem::exists(path))
+        {
+            root = YAML::LoadFile(path.string());
+        }
+        root["attachments"] = attachments;
+        std::filesystem::create_directories(path.parent_path());
+        std::ofstream out(path, std::ios::trunc);
+        THROW_LAST_ERROR_IF(!out);
+        out << root;
+    }
+} // namespace
+
+std::vector<std::string> Attachments(const std::string& instance)
+{
+    std::vector<std::string> result;
+    const auto node = ReadAttachmentsNode();
+    if (const auto list = node[instance])
+    {
+        for (const auto& item : list)
+        {
+            result.emplace_back(item.as<std::string>());
+        }
+    }
+    return result;
+}
+
+void Attach(const std::string& instance, const std::string& network)
+{
+    auto attachments = ReadAttachmentsNode();
+    auto list = attachments[instance];
+    if (!list)
+    {
+        list = YAML::Node(YAML::NodeType::Sequence);
+    }
+    const std::string dupCheck = network;
+    for (const auto& item : list)
+    {
+        if (item.as<std::string>() == dupCheck)
+        {
+            return; // 幂等
+        }
+    }
+    list.push_back(network);
+    attachments[instance] = list;
+    SaveAttachmentsNode(attachments);
+}
+
+void Detach(const std::string& instance, const std::string& network)
+{
+    auto attachments = ReadAttachmentsNode();
+    auto list = attachments[instance];
+    if (!list)
+    {
+        return;
+    }
+    auto kept = YAML::Node(YAML::NodeType::Sequence);
+    for (const auto& item : list)
+    {
+        if (item.as<std::string>() != network)
+        {
+            kept.push_back(item);
+        }
+    }
+    attachments[instance] = kept;
+    SaveAttachmentsNode(attachments);
+}
 } // namespace wsl::windows::common::wslplus::networks

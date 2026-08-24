@@ -221,6 +221,30 @@ std::optional<int> Dispatch(_In_ const std::wstring& commandLine)
                 return -1;
             }
         }
+        else if (netAction == L"attach")
+        {
+            if (argc < 5)
+            {
+                wsl::windows::common::wslutil::PrintMessage(L"用法: wsl network attach <instance> <network>");
+                return -1;
+            }
+
+            wsl::windows::common::wslplus::networks::Attach(argv[3], argv[4]);
+            wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus: 网络已绑定实例");
+            return 0;
+        }
+        else if (netAction == L"detach")
+        {
+            if (argc < 5)
+            {
+                wsl::windows::common::wslutil::PrintMessage(L"用法: wsl network detach <instance> <network>");
+                return -1;
+            }
+
+            wsl::windows::common::wslplus::networks::Detach(argv[3], argv[4]);
+            wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus: 网络已解绑");
+            return 0;
+        }
     }
 
     //
