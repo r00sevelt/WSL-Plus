@@ -7,7 +7,9 @@
 [CmdletBinding()]
 param (
     [Parameter(Mandatory)][string]$InputFile,
-    [Parameter(Mandatory)][string]$OutputFile
+    [Parameter(Mandatory)][string]$OutputFile,
+    # WSL-Plus E5: 额外打包目录（如静态 btrfs-progs），其中的文件以相对路径姿态写入 initramfs
+    [string]$ExtraToolsDir = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -58,6 +60,18 @@ $out = [System.IO.File]::Create($OutputFile)
 try
 {
     Write-CpioEntry $out $name $data 0x81ED $mtime  # S_IFREG | 0755
+
+    # WSL-Plus E5: 额外工具打包（相对目录结构，如 usr/sbin/mkfs.btrfs）
+    if ($ExtraToolsDir -ne "" -and (Test-Path $ExtraToolsDir))
+    {
+        Get-ChildItem $ExtraToolsDir -Recurse -File | ForEach-Object {
+            $rel = $_.FullName.Substring((Resolve-Path $ExtraToolsDir).Path.Length).TrimStart('\', '/').Replace('\', '/')
+            $entryName = [System.Text.Encoding]::ASCII.GetBytes("$rel`0")
+            $entryData = [System.IO.File]::ReadAllBytes($_.FullName)
+            Write-CpioEntry $out $entryName $entryData 0x81ED $mtime  # S_IFREG | 0755
+        }
+    }
+
     $trailer = [System.Text.Encoding]::ASCII.GetBytes("TRAILER!!!`0")
     Write-CpioEntry $out $trailer ([byte[]]::new(0)) 0 0
 }
