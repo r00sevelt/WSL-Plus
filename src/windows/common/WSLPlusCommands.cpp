@@ -16,6 +16,7 @@ Abstract:
 #include "precomp.h"
 #include "WSLPlusCommands.h"
 #include "WSLPlusNetworks.h"
+#include "WSLPlusImages.h"
 
 namespace wsl::windows::common::wslplus
 {
@@ -311,6 +312,83 @@ std::optional<int> Dispatch(_In_ const std::wstring& commandLine)
 
             wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus: 端口映射已启用");
             return 0;
+        }
+    }
+
+    //
+    // image 子命令组（D3: 本地镜像库; wsl image list/import/rm）
+    //
+    if (verb == L"image")
+    {
+        if (argc < 3)
+        {
+            wsl::windows::common::wslutil::PrintMessage(
+                L"用法: wsl image list | wsl image import <tar> <name> [--desc x] | wsl image rm <name>");
+            return 0;
+        }
+
+        const std::wstring_view imgAction(argv[2]);
+        if (imgAction == L"list")
+        {
+            const auto images = wsl::windows::common::wslplus::images::List();
+            for (const auto& img : images)
+            {
+                wsl::windows::common::wslutil::PrintMessage(
+                    std::format(L"{}  ({} / {})", img.name, img.architecture, img.baseVersion));
+            }
+            return 0;
+        }
+        else if (imgAction == L"import")
+        {
+            if (argc < 5)
+            {
+                wsl::windows::common::wslutil::PrintMessage(L"用法: wsl image import <tar路径> <name> [--desc 描述]");
+                return -1;
+            }
+
+            const std::wstring desc = [&]() -> std::wstring {
+                for (int i = 4; i < argc; ++i)
+                {
+                    if (std::wstring_view(argv[i]) == L"--desc" && i + 1 < argc)
+                    {
+                        return argv[i + 1];
+                    }
+                }
+                return L"";
+            }();
+
+            try
+            {
+                auto manifest = wsl::windows::common::wslplus::images::Import(argv[3], argv[4], desc.empty() ? nullptr : desc.c_str());
+                wsl::windows::common::wslutil::PrintMessage(
+                    std::format(L"WSL-Plus 镜像已导入: {}", manifest.name));
+                return 0;
+            }
+            catch (...)
+            {
+                wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus: 镜像导入失败");
+                return -1;
+            }
+        }
+        else if (imgAction == L"rm")
+        {
+            if (argc < 4)
+            {
+                wsl::windows::common::wslutil::PrintMessage(L"用法: wsl image rm <name>");
+                return -1;
+            }
+
+            try
+            {
+                wsl::windows::common::wslplus::images::Remove(argv[3]);
+                wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus 镜像已删除");
+                return 0;
+            }
+            catch (...)
+            {
+                wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus: 镜像不存在");
+                return -1;
+            }
         }
     }
 
