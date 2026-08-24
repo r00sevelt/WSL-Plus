@@ -145,6 +145,85 @@ std::optional<int> Dispatch(_In_ const std::wstring& commandLine)
     }
 
     //
+    // network 子命令组（C1: 网络配置数据模型; wsl network ls/add/rm）
+    //
+    if (verb == L"network")
+    {
+        if (argc < 3)
+        {
+            wsl::windows::common::wslutil::PrintMessage(
+                L"用法: wsl network ls | wsl network add <name> [--type nat|bridge|host-only] [--cidr x] | wsl network rm <name>");
+            return 0;
+        }
+
+        const std::wstring_view netAction(argv[2]);
+        if (netAction == L"ls")
+        {
+            const auto networks = wsl::windows::common::wslplus::networks::Load();
+            for (const auto& n : networks)
+            {
+                wsl::windows::common::wslutil::PrintMessage(
+                    std::format(L"{} ({})  {} {}  ports={}", n.name, n.type, n.cidr, n.dns, n.ports.size()));
+            }
+            return 0;
+        }
+        else if (netAction == L"add")
+        {
+            if (argc < 4)
+            {
+                wsl::windows::common::wslutil::PrintMessage(L"用法: wsl network add <name> [--type nat|bridge|host-only] [--cidr x.x.x.x/nn]");
+                return -1;
+            }
+
+            wsl::windows::common::wslplus::networks::NetworkConfig cfg;
+            cfg.name = argv[3];
+            for (int i = 4; i < argc; ++i)
+            {
+                if (std::wstring_view(argv[i]) == L"--type" && i + 1 < argc)
+                {
+                    cfg.type = wsl::windows::common::string::WideToMultiByte(argv[++i]);
+                }
+                else if (std::wstring_view(argv[i]) == L"--cidr" && i + 1 < argc)
+                {
+                    cfg.cidr = wsl::windows::common::string::WideToMultiByte(argv[++i]);
+                }
+            }
+
+            try
+            {
+                wsl::windows::common::wslplus::networks::Save(cfg);
+                wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus network 已保存");
+                return 0;
+            }
+            catch (...)
+            {
+                wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus: 网络配置无效");
+                return -1;
+            }
+        }
+        else if (netAction == L"rm")
+        {
+            if (argc < 4)
+            {
+                wsl::windows::common::wslutil::PrintMessage(L"用法: wsl network rm <name>");
+                return -1;
+            }
+
+            try
+            {
+                wsl::windows::common::wslplus::networks::Remove(argv[3]);
+                wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus network 已删除");
+                return 0;
+            }
+            catch (...)
+            {
+                wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus: 网络不存在");
+                return -1;
+            }
+        }
+    }
+
+    //
     // 后续子命令（profile / ls / file / ...）在此扩展 —— 替换式命令集演进点
     //
 
