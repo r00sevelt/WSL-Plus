@@ -503,7 +503,23 @@ std::optional<int> Dispatch(_In_ const std::wstring& commandLine)
                 return SUCCEEDED(service.AttachSerialPort(&distroId, it->hostPath.c_str())) ? 0 : -1;
             }
 
-            wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus: 该类型通道（usb/parallel）尚未接通（serial 已可用）");
+            if (it->type == "parallel")
+            {
+                // 并口通道: USB-LPT 桥接设备走 USB 后端（host=usb 设备标识）；
+                // 原生 ISA LPT 不支持（现代平台无直通路径）
+                if (!it->hostPath.empty())
+                {
+                    auto backend = wsl::windows::common::wslplus::usb::CreateDefault();
+                    wsl::windows::common::SvcComm service;
+                    const auto distroId = service.GetDistributionId(argv[4]);
+                    backend->Attach(it->hostPath, distroId);
+                    return 0;
+                }
+                wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus: 并口需 USB-LPT 桥接设备（host=USB id）");
+                return -1;
+            }
+
+            wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus: USB 类型请用 wsl device watch/后端通道");
             return -1;
         }
         else if (devAction == L"watch")
