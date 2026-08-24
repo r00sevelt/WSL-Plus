@@ -19,7 +19,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: "检出代码"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: "配置构建参数（低内存、禁用PCH、跳过gluepackage）"
         run: |
