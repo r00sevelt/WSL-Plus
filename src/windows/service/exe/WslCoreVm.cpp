@@ -1228,6 +1228,11 @@ std::shared_ptr<LxssRunningInstance> WslCoreVm::CreateInstance(
 
     // Launch the init daemon and create the instance.
     int flags = LxMiniInitMessageFlagNone;
+    // WSL-Plus B5: 克隆实例（注册标志）→ 通知 guest 做首次启动唯一化
+    if (WI_IsFlagSet(Configuration.Flags, LXSS_DISTRO_FLAGS_WSLPLUS_CLONE))
+    {
+        WI_SetFlag(flags, LxMiniInitMessageFlagWslplusClone);
+    }
     std::wstring sharedMemoryRoot{};
 
 #ifdef WSL_DEV_INSTALL_PATH

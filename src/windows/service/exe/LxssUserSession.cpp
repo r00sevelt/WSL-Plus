@@ -1858,7 +1858,7 @@ try
         NewName,
         srcConfig.Version,
         srcVhd.parent_path().c_str(),
-        srcConfig.Flags,
+        srcConfig.Flags | LXSS_DISTRO_FLAGS_WSLPLUS_CLONE, // B5: 克隆标记（guest 首次启动唯一化）
         0 /* DefaultUid: v0.1 取默认，唯一化 v0.2 */,
         srcConfig.PackageFamilyName.c_str(),
         dstVhd.filename().c_str(),

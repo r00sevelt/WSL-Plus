@@ -2298,6 +2298,20 @@ void ProcessLaunchInitMessage(
                 DistroCgroupPath.clear();
             });
 
+            // WSL-Plus B5: 克隆实例首次启动唯一化（hostname/机器ID/SSH 主机密钥，幂等）
+            if (Message->Flags & LxMiniInitMessageFlagWslplusClone)
+            {
+                std::string UniqueCmd =
+                    "if [ ! -f /etc/wslplus/unique.done ]; then "
+                    "mkdir -p /etc/wslplus; "
+                    "systemctl hostname $(hostnamectl --static 2>/dev/null || echo wslplus); "
+                    "rm -f /etc/ssh/ssh_host_*; "
+                    "systemd-machine-id-setup 2>/dev/null || true; "
+                    "touch /etc/wslplus/unique.done; "
+                    "fi";
+                UtilExecCommandLine(UniqueCmd.c_str(), nullptr);
+            }
+
             try
             {
                 THROW_LAST_ERROR_IF(UtilMkdir(DistroCgroupPath.c_str(), 0755) < 0);

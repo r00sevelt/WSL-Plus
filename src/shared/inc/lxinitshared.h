@@ -1219,6 +1219,7 @@ typedef enum _LX_MINI_INIT_MESSAGE_FLAGS
     LxMiniInitMessageFlagExportCompressGzip = 0x8,
     LxMiniInitMessageFlagExportCompressXzip = 0x10,
     LxMiniInitMessageFlagVerbose = 0x20,
+    LxMiniInitMessageFlagWslplusClone = 0x40, // WSL-Plus: 实例由克隆产生 → 唯一化
 } LX_MINI_INIT_MESSAGE_FLAGS,
     *PLX_MINI_INIT_MESSAGE_FLAGS;
 
