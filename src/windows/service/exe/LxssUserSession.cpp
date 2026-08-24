@@ -1903,7 +1903,7 @@ try
 }
 CATCH_RETURN()
 
-// WSL-Plus: 端口映射应用（C3b-1 接口管线段；宿主监听+relay 在 C3b-2 实现）
+// WSL-Plus: 端口映射应用（宿主端口监听 → LaunchPortRelay 转发到 VM）
 HRESULT LxssUserSessionImpl::ApplyPortMappings(_In_ LPCGUID DistroGuid, _In_ LPCSTR PortsJson)
 try
 {
@@ -1914,9 +1914,63 @@ try
     const auto configuration = s_GetDistributionConfiguration(registration);
     RETURN_HR_IF(WSL_E_WSL2_NEEDED, WI_IsFlagClear(configuration.Flags, LXSS_DISTRO_FLAGS_VM_MODE));
 
-    // C3b-2: 解析 PortsJson → 宿主监听 → LaunchPortRelay（VmId=m_utilityVm->GetRuntimeId()）
-    // 当前骨架记录配置，未启用转发（下一步完成）
-    (void)PortsJson;
+    _CreateVm();
+
+    // 服务端实现：解析 JSON ports → 每端口启动监听线程（accept→relay）
+    const auto portsJson = nlohmann::json::parse(PortsJson, nullptr, false);
+    RETURN_HR_IF(E_INVALIDARG, portsJson.is_discarded() || !portsJson.is_array());
+
+    for (const auto& entry : portsJson)
+    {
+        const uint32_t hostPort = entry.value("hostPort", 0u);
+        const uint32_t guestPort = entry.value("guestPort", 0u);
+        if (hostPort == 0 || guestPort == 0 || hostPort > 65535 || guestPort > 65535)
+        {
+            continue;
+        }
+
+        (void)guestPort; // relay 目标端口由 VM 侧监听; v0.2 扩展内核可达地址映射
+
+        m_portRelayThreads.emplace_back([this, hostPort, bindingIp = entry.value("bindingIp", std::string("0.0.0.0")), userToken = userToken.get()]() {
+            SOCKET listener = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+            if (listener == INVALID_SOCKET)
+            {
+                return;
+            }
+
+            sockaddr_in bindAddr{};
+            bindAddr.sin_family = AF_INET;
+            bindAddr.sin_port = htons(static_cast<u_short>(hostPort));
+            inet_pton(AF_INET, bindingIp.c_str(), &bindAddr.sin_addr);
+
+            if (bind(listener, reinterpret_cast<const sockaddr*>(&bindAddr), sizeof(bindAddr)) == SOCKET_ERROR ||
+                listen(listener, SOMAXCONN) == SOCKET_ERROR)
+            {
+                closesocket(listener);
+                return;
+            }
+
+            for (;;)
+            {
+                const SOCKET client = accept(listener, nullptr, nullptr);
+                if (client == INVALID_SOCKET)
+                {
+                    break;
+                }
+                // LaunchPortRelay 接管连接（转发至 VM 运行时端口）
+                try
+                {
+                    wsl::windows::common::helpers::LaunchPortRelay(
+                        client, m_utilityVm->GetRuntimeId(), userToken, false, nullptr);
+                }
+                catch (...)
+                {
+                    closesocket(client);
+                }
+            }
+        });
+    }
+
     return S_OK;
 }
 CATCH_RETURN()

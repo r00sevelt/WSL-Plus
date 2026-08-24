@@ -493,6 +493,9 @@ public:
     HRESULT
     ApplyPortMappings(_In_ LPCGUID DistroGuid, _In_ LPCSTR PortsJson);
 
+    // WSL-Plus: 端口转发监听线程（每个宿主端口一条）
+    std::vector<std::thread> m_portRelayThreads;
+
     /// <summary>
     /// Compacts the disk of a distribution.
     /// </summary>
