@@ -24,6 +24,12 @@ namespace wsl::windows::common::wslplus
 {
 namespace
 {
+    // 统一窄化助手（CLI argv 为 LPWSTR；模块接口为 std::string —— 一处定义全文件使用）
+    std::string Narrow(_In_ LPCWSTR value)
+    {
+        return wsl::windows::common::string::WideToMultiByte(value);
+    }
+
     void PrintSnapshotUsage(); // 前向声明（定义在 ExecuteSnapshot 之后）
 
     // WSL-Plus: 快照命令执行（CLI→SvcComm→服务端→guest btrfs 模块）
@@ -169,7 +175,8 @@ std::optional<int> Dispatch(_In_ const std::wstring& commandLine)
                 return -1;
             }
             const auto networks = wsl::windows::common::wslplus::networks::Load();
-            auto it = std::find_if(networks.begin(), networks.end(), [&](const auto& n) { return n.name == argv[3]; });
+            const auto showName = Narrow(argv[3]);
+            auto it = std::find_if(networks.begin(), networks.end(), [&](const auto& n) { return n.name == showName; });
             if (it == networks.end())
             {
                 wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus: 网络不存在");
@@ -203,7 +210,7 @@ std::optional<int> Dispatch(_In_ const std::wstring& commandLine)
             }
 
             wsl::windows::common::wslplus::networks::NetworkConfig cfg;
-            cfg.name = argv[3];
+            cfg.name = Narrow(argv[3]);
             for (int i = 4; i < argc; ++i)
             {
                 if (std::wstring_view(argv[i]) == L"--type" && i + 1 < argc)
@@ -242,7 +249,7 @@ std::optional<int> Dispatch(_In_ const std::wstring& commandLine)
 
             try
             {
-                wsl::windows::common::wslplus::networks::Remove(argv[3]);
+                wsl::windows::common::wslplus::networks::Remove(Narrow(argv[3]));
                 wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus network 已删除");
                 return 0;
             }
@@ -260,7 +267,7 @@ std::optional<int> Dispatch(_In_ const std::wstring& commandLine)
                 return -1;
             }
 
-            wsl::windows::common::wslplus::networks::Attach(argv[3], argv[4]);
+            wsl::windows::common::wslplus::networks::Attach(Narrow(argv[3]), Narrow(argv[4]));
             wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus: 网络已绑定实例");
             return 0;
         }
@@ -272,7 +279,7 @@ std::optional<int> Dispatch(_In_ const std::wstring& commandLine)
                 return -1;
             }
 
-            wsl::windows::common::wslplus::networks::Detach(argv[3], argv[4]);
+            wsl::windows::common::wslplus::networks::Detach(Narrow(argv[3]), Narrow(argv[4]));
             wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus: 网络已解绑");
             return 0;
         }
@@ -286,7 +293,7 @@ std::optional<int> Dispatch(_In_ const std::wstring& commandLine)
             }
 
             const auto allNetworks = wsl::windows::common::wslplus::networks::Load();
-            const auto attached = wsl::windows::common::wslplus::networks::Attachments(argv[3]);
+            const auto attached = wsl::windows::common::wslplus::networks::Attachments(Narrow(argv[3]));
 
             nlohmann::json portsJson = nlohmann::json::array();
             for (const auto& netName : attached)
@@ -336,7 +343,10 @@ std::optional<int> Dispatch(_In_ const std::wstring& commandLine)
             for (const auto& img : images)
             {
                 wsl::windows::common::wslutil::PrintMessage(
-                    std::format(L"{}  ({} / {})", img.name, img.architecture, img.baseVersion));
+                    std::format(L"{}  ({} / {})",
+                        wsl::windows::common::string::MultiByteToWide(img.name),
+                        wsl::windows::common::string::MultiByteToWide(img.architecture),
+                        wsl::windows::common::string::MultiByteToWide(img.baseVersion)));
             }
             return 0;
         }
@@ -426,7 +436,7 @@ std::optional<int> Dispatch(_In_ const std::wstring& commandLine)
             }
 
             wsl::windows::common::wslplus::devices::DeviceConfig cfg;
-            cfg.id = argv[3];
+            cfg.id = Narrow(argv[3]);
             cfg.type = wsl::windows::common::string::WideToMultiByte(argv[4]);
             cfg.hostPath = wsl::windows::common::string::WideToMultiByte(argv[5]);
             for (int i = 6; i < argc; ++i)
@@ -464,7 +474,7 @@ std::optional<int> Dispatch(_In_ const std::wstring& commandLine)
                 wsl::windows::common::wslutil::PrintMessage(L"用法: wsl device rm <id>（仅清理登记，不碰硬件）");
                 return -1;
             }
-            wsl::windows::common::wslplus::devices::Remove(argv[3]);
+            wsl::windows::common::wslplus::devices::Remove(Narrow(argv[3]));
             wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus 设备登记已删除");
             return 0;
         }
@@ -475,7 +485,7 @@ std::optional<int> Dispatch(_In_ const std::wstring& commandLine)
                 wsl::windows::common::wslutil::PrintMessage(L"用法: wsl device auto <id> <instance>");
                 return -1;
             }
-            wsl::windows::common::wslplus::devices::SetPolicy(argv[3], wsl::windows::common::wslplus::devices::Policy::Auto, argv[4]);
+            wsl::windows::common::wslplus::devices::SetPolicy(Narrow(argv[3]), wsl::windows::common::wslplus::devices::Policy::Auto, Narrow(argv[4]));
             wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus 设备已设为自动共享");
             return 0;
         }
@@ -489,7 +499,8 @@ std::optional<int> Dispatch(_In_ const std::wstring& commandLine)
             }
 
             const auto devices = wsl::windows::common::wslplus::devices::Load();
-            auto it = std::find_if(devices.begin(), devices.end(), [&](const auto& d) { return d.id == argv[3]; });
+            const auto attachId = Narrow(argv[3]);
+            auto it = std::find_if(devices.begin(), devices.end(), [&](const auto& d) { return d.id == attachId; });
             if (it == devices.end())
             {
                 wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus: 设备未登记（先 wsl device add）");
@@ -558,7 +569,8 @@ std::optional<int> Dispatch(_In_ const std::wstring& commandLine)
             }
 
             const auto devices = wsl::windows::common::wslplus::devices::Load();
-            auto it = std::find_if(devices.begin(), devices.end(), [&](const auto& d) { return d.id == argv[3]; });
+            const auto ejectId = Narrow(argv[3]);
+            auto it = std::find_if(devices.begin(), devices.end(), [&](const auto& d) { return d.id == ejectId; });
             if (it != devices.end() && it->type == "serial" && !it->instance.empty())
             {
                 wsl::windows::common::SvcComm service;
@@ -566,7 +578,7 @@ std::optional<int> Dispatch(_In_ const std::wstring& commandLine)
                 service.DetachSerialPort(&distroId);
             }
 
-            wsl::windows::common::wslplus::devices::SetPolicy(argv[3], wsl::windows::common::wslplus::devices::Policy::Manual, L"");
+            wsl::windows::common::wslplus::devices::SetPolicy(Narrow(argv[3]), wsl::windows::common::wslplus::devices::Policy::Manual, L"");
             wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus: 设备已归还 Windows（可再 attach 挂载）");
             return 0;
         }
