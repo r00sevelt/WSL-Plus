@@ -648,6 +648,9 @@ void WslCoreVm::Initialize(const GUID& VmId, const wil::shared_handle& UserToken
             {
                 m_networkingEngine->Initialize();
             }
+
+            // WSL-Plus C4b1: 应用额外网络适配器（attachments 中的 bridge 网络 → 第二/更多 vNIC）
+            ApplyExtraNetworkAdapters();
         });
 
         // Find the interface type of the host interface that is most likely to give Internet connectivity
@@ -1226,6 +1229,9 @@ std::shared_ptr<LxssRunningInstance> WslCoreVm::CreateInstance(
     const auto lun = AttachDiskLockHeld(Configuration.VhdFilePath.c_str(), DiskType::VHD, MountFlags::None, {}, false, m_userToken.get());
     slowOperation.Reset();
 
+    // WSL-Plus: 记录分发名（networks.yaml attachments 键 / C4b1 多 vNIC 绑定）
+    m_instanceName = Configuration.Name;
+
     // Launch the init daemon and create the instance.
     int flags = LxMiniInitMessageFlagNone;
     // WSL-Plus B5: 克隆实例（注册标志）→ 通知 guest 做首次启动唯一化
@@ -1458,6 +1464,53 @@ void WslCoreVm::FreeLun(_In_ ULONG lun)
 {
     WI_ASSERT(m_lunBitmap[lun]);
     m_lunBitmap.set(lun, false);
+}
+
+// WSL-Plus C4b1: 额外网络适配器
+// 机制（与微软同构）: vNIC 不走静态 HCS JSON —— HCN 端点动态创建 + ModifyComputeSystem(Add) attach；
+// guest 侧 vmbus/virtio-net 自动枚举出 eth1/eth2…
+void WslCoreVm::ApplyExtraNetworkAdapters()
+{
+    const auto attached = wsl::windows::common::wslplus::networks::Attachments(wsl::windows::common::string::WideToMultiByte(m_instanceName));
+    const auto allNetworks = wsl::windows::common::wslplus::networks::Load();
+
+    for (const auto& netName : attached)
+    {
+        auto it = std::find_if(allNetworks.begin(), allNetworks.end(), [&](const auto& n) { return n.name == netName; });
+        if (it == allNetworks.end() || it->type != "bridge")
+        {
+            continue;
+        }
+
+        const auto targetSwitchName = wsl::windows::common::string::MultiByteToWide(it->name);
+        for (const auto& id : wsl::core::networking::EnumerateNetworks())
+        {
+            try
+            {
+                const auto network = wsl::core::networking::OpenNetwork(id);
+                auto [networkProperties, propertiesString] = wsl::core::networking::QueryNetworkProperties(network.get());
+                if (networkProperties.Name != targetSwitchName)
+                {
+                    continue;
+                }
+
+                wsl::shared::hns::HNSEndpoint hnsEndpoint{};
+                auto endpoint = wsl::core::networking::CreateEphemeralHcnEndpoint(network.get(), hnsEndpoint);
+
+                // Attach（照 NatNetworking::AttachEndpoint 模式: ModifyComputeSystem(Add, NetworkAdapter)）
+                hcs::ModifySettingRequest<hcs::NetworkAdapter> networkRequest{};
+                networkRequest.ResourcePath = wsl::core::networking::c_networkAdapterPrefix + wsl::shared::string::GuidToString<wchar_t>(hnsEndpoint.ID);
+                networkRequest.RequestType = wsl::shared::hns::ModifyRequestType::Add;
+                networkRequest.Settings.EndpointId = hnsEndpoint.ID;
+                networkRequest.Settings.InstanceId = hnsEndpoint.ID;
+                networkRequest.Settings.MacAddress = wsl::shared::string::ParseMacAddress(hnsEndpoint.MacAddress);
+                wsl::windows::common::hcs::ModifyComputeSystem(m_system.get(), wsl::shared::ToJsonW(networkRequest).c_str());
+                WSL_LOG("WSL-Plus: extra network adapter attached", TraceLoggingValue(netName.c_str(), "network"));
+                break;
+            }
+            CATCH_LOG()
+        }
+    }
 }
 
 std::wstring WslCoreVm::GenerateConfigJson()

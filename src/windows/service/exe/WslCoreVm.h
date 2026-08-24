@@ -98,6 +98,9 @@ public:
 
     GUID GetRuntimeId() const;
 
+    // WSL-Plus C4b1: 额外网络适配器（networks.yaml attachments 的 bridge 网络 → HCN 端点 attach）
+    void ApplyExtraNetworkAdapters();
+
     int GetVmIdleTimeout() const;
 
     bool InitializeDrvFs(_In_ HANDLE UserToken);
@@ -286,6 +289,7 @@ private:
     wil::srwlock m_exitCallbackLock;
     std::wstring m_exitDetails;
     std::wstring m_machineId;
+    std::wstring m_instanceName; // WSL-Plus: 分发名（networks.yaml attachments 键）
     GUID m_runtimeId;
     wsl::core::Config m_vmConfig;
     InitializeDrvFsCallback m_initializeDrvFs;
