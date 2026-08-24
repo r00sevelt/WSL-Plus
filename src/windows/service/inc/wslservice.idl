@@ -273,6 +273,15 @@ interface ILxssUserSession : IUnknown
         [in, string] LPCSTR PortsJson,
         [in, out] LXSS_ERROR_INFO* Error);
 
+    // WSL-Plus: 串口重定向挂载/归还（宿主 COM ↔ guest ttySx）
+    HRESULT AttachSerialPort(
+        [in] LPCGUID DistroGuid,
+        [in, string] LPCWSTR HostComName,
+        [in, out] LXSS_ERROR_INFO* Error);
+    HRESULT DetachSerialPort(
+        [in] LPCGUID DistroGuid,
+        [in, out] LXSS_ERROR_INFO* Error);
+
     HRESULT SetDefaultDistribution(
         [in] LPCGUID DistroGuid,
         [in, out] LXSS_ERROR_INFO* Error);

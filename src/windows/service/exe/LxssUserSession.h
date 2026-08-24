@@ -199,6 +199,10 @@ public:
     // WSL-Plus: 端口映射应用
     IFACEMETHOD(ApplyPortMappings)(_In_ LPCGUID DistroGuid, _In_ LPCSTR PortsJson, _Out_ LXSS_ERROR_INFO* Error) override;
 
+    // WSL-Plus: 串口重定向挂载/归还
+    IFACEMETHOD(AttachSerialPort)(_In_ LPCGUID DistroGuid, _In_ LPCWSTR HostComName, _Out_ LXSS_ERROR_INFO* Error) override;
+    IFACEMETHOD(DetachSerialPort)(_In_ LPCGUID DistroGuid, _Out_ LXSS_ERROR_INFO* Error) override;
+
     /// <summary>
     /// Compacts the virtual disk of a distribution.
     /// </summary>
@@ -492,6 +496,12 @@ public:
     // WSL-Plus: 端口映射应用（宿主监听+relay，实现见 C3b-2）
     HRESULT
     ApplyPortMappings(_In_ LPCGUID DistroGuid, _In_ LPCSTR PortsJson);
+
+    // WSL-Plus: 串口重定向实现
+    HRESULT
+    AttachSerialPort(_In_ LPCGUID DistroGuid, _In_ LPCWSTR HostComName);
+    HRESULT
+    DetachSerialPort(_In_ LPCGUID DistroGuid);
 
     // WSL-Plus: 端口转发监听线程（每个宿主端口一条）
     std::vector<std::thread> m_portRelayThreads;

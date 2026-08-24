@@ -516,6 +516,22 @@ try
     return session->ApplyPortMappings(DistroGuid, PortsJson);
 }
 CATCH_RETURN(Error)
+
+HRESULT STDMETHODCALLTYPE LxssUserSession::AttachSerialPort(_In_ LPCGUID DistroGuid, _In_ LPCWSTR HostComName, _Out_ LXSS_ERROR_INFO* Error)
+try
+{
+    const auto session = FindOrCreateUserSession(false);
+    return session->AttachSerialPort(DistroGuid, HostComName);
+}
+CATCH_RETURN(Error)
+
+HRESULT STDMETHODCALLTYPE LxssUserSession::DetachSerialPort(_In_ LPCGUID DistroGuid, _Out_ LXSS_ERROR_INFO* Error)
+try
+{
+    const auto session = FindOrCreateUserSession(false);
+    return session->DetachSerialPort(DistroGuid);
+}
+CATCH_RETURN(Error)
 CATCH_RETURN()
 
 HRESULT STDMETHODCALLTYPE LxssUserSession::CompactDistribution(_In_ LPCGUID DistroGuid, _Out_ LXSS_ERROR_INFO* Error)
@@ -1904,6 +1920,26 @@ try
 CATCH_RETURN()
 
 // WSL-Plus: 端口映射应用（宿主端口监听 → LaunchPortRelay 转发到 VM）
+// WSL-Plus: 串口重定向实现（路由到 utility VM 串口通道）
+HRESULT LxssUserSessionImpl::AttachSerialPort(_In_ LPCGUID DistroGuid, _In_ LPCWSTR HostComName)
+try
+{
+    std::lock_guard lock(m_instanceLock);
+    _CreateVm();
+    m_utilityVm->AttachSerialPort(HostComName);
+    return S_OK;
+}
+CATCH_RETURN()
+
+HRESULT LxssUserSessionImpl::DetachSerialPort(_In_ LPCGUID DistroGuid)
+try
+{
+    std::lock_guard lock(m_instanceLock);
+    m_utilityVm->DetachSerialPort();
+    return S_OK;
+}
+CATCH_RETURN()
+
 HRESULT LxssUserSessionImpl::ApplyPortMappings(_In_ LPCGUID DistroGuid, _In_ LPCSTR PortsJson)
 try
 {

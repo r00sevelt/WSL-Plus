@@ -101,6 +101,12 @@ public:
     HRESULT
     ApplyPortMappings(_In_ LPCGUID DistroGuid, _In_ LPCSTR portsJson) const;
 
+    // WSL-Plus: 串口重定向挂载/归还
+    HRESULT
+    AttachSerialPort(_In_ LPCGUID DistroGuid, _In_ LPCWSTR hostComName) const;
+    HRESULT
+    DetachSerialPort(_In_ LPCGUID DistroGuid) const;
+
     HRESULT
     CompactDistribution(_In_ LPCGUID DistroGuid) const;
 

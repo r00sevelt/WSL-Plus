@@ -478,15 +478,52 @@ std::optional<int> Dispatch(_In_ const std::wstring& commandLine)
             wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus 设备已设为自动共享");
             return 0;
         }
+        else if (devAction == L"attach")
+        {
+            // D 组: 挂载设备到实例（serial → 服务端串口重定向通道真挂载）
+            if (argc < 5)
+            {
+                wsl::windows::common::wslutil::PrintMessage(L"用法: wsl device attach <id> <instance>");
+                return -1;
+            }
+
+            const auto devices = wsl::windows::common::wslplus::devices::Load();
+            auto it = std::find_if(devices.begin(), devices.end(), [&](const auto& d) { return d.id == argv[3]; });
+            if (it == devices.end())
+            {
+                wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus: 设备未登记（先 wsl device add）");
+                return -1;
+            }
+
+            if (it->type == "serial")
+            {
+                wsl::windows::common::SvcComm service;
+                const auto distroId = service.GetDistributionId(argv[4]);
+                return SUCCEEDED(service.AttachSerialPort(&distroId, it->hostPath.c_str())) ? 0 : -1;
+            }
+
+            wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus: 该类型通道（usb/parallel）尚未接通（serial 已可用）");
+            return -1;
+        }
         else if (devAction == L"eject")
         {
             // D 组安全语义: 归还 Windows（弹出式取消挂载）——
-            // 优雅释放（通道层接入后将先停用 guest 侧）→ 松绑到 manual 无实例
+            // serial: 服务端断桥归还；同时松绑登记（manual 无实例）
             if (argc < 4)
             {
                 wsl::windows::common::wslutil::PrintMessage(L"用法: wsl device eject <id>（归还 Windows，类似弹出 U 盘）");
                 return -1;
             }
+
+            const auto devices = wsl::windows::common::wslplus::devices::Load();
+            auto it = std::find_if(devices.begin(), devices.end(), [&](const auto& d) { return d.id == argv[3]; });
+            if (it != devices.end() && it->type == "serial" && !it->instance.empty())
+            {
+                wsl::windows::common::SvcComm service;
+                const auto distroId = service.GetDistributionId(it->instance.c_str());
+                service.DetachSerialPort(&distroId);
+            }
+
             wsl::windows::common::wslplus::devices::SetPolicy(argv[3], wsl::windows::common::wslplus::devices::Policy::Manual, L"");
             wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus: 设备已归还 Windows（可再 attach 挂载）");
             return 0;

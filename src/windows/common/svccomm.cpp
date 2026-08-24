@@ -696,6 +696,20 @@ wsl::windows::common::SvcComm::ApplyPortMappings(_In_ LPCGUID DistroGuid, _In_ L
 }
 
 HRESULT
+wsl::windows::common::SvcComm::AttachSerialPort(_In_ LPCGUID DistroGuid, _In_ LPCWSTR hostComName) const
+{
+    ClientExecutionContext context;
+    RETURN_HR(m_userSession->AttachSerialPort(DistroGuid, hostComName, context.OutError()));
+}
+
+HRESULT
+wsl::windows::common::SvcComm::DetachSerialPort(_In_ LPCGUID DistroGuid) const
+{
+    ClientExecutionContext context;
+    RETURN_HR(m_userSession->DetachSerialPort(DistroGuid, context.OutError()));
+}
+
+HRESULT
 wsl::windows::common::SvcComm::SetVersion(_In_ LPCGUID DistroGuid, _In_ ULONG Version) const
 {
     ClientExecutionContext context;
