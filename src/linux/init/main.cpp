@@ -205,7 +205,8 @@ int SetEphemeralPortRange(uint16_t Start, uint16_t End);
 
 void StartDebugShell();
 
-int StartDhcpClient(int DhcpTimeout);
+int StartDhcpClient(int DhcpTimeout, const std::string& Interface);
+int StartExtraDhcpClients(int DhcpTimeout);
 
 int StartGuestNetworkService(int GnsFd, wil::unique_fd&& DnsTunnelingFd, uint32_t DnsTunnelingIpAddress);
 
@@ -1005,18 +1006,20 @@ Return Value:
     });
 }
 
-int StartDhcpClient(int DhcpTimeout)
+int StartDhcpClient(int DhcpTimeout, const std::string& Interface)
 
 /*++
 
 Routine Description:
 
-    Starts the dhcp client daemon. Blocks until the initial DHCP lease is acquired,
-    then the daemon continues running in the background to handle renewals.
+    Starts the dhcp client daemon on the given interface. Blocks until the initial
+    DHCP lease is acquired, then the daemon continues running in the background
+    to handle renewals.
 
 Arguments:
 
     DhcpTimeout - Supplies the timeout in seconds for the DHCP request.
+    Interface - WSL-Plus C4b2: 目标接口（调用方传 eth0 / 额外网卡）
 
 Return Value:
 
@@ -1025,7 +1028,7 @@ Return Value:
 --*/
 
 {
-    int ChildPid = UtilCreateChildProcess("dhcpcd", [DhcpTimeout]() {
+    int ChildPid = UtilCreateChildProcess("dhcpcd", [DhcpTimeout, Interface]() {
         //
         // Write the dhcpcd.conf config file.
         //
@@ -1038,7 +1041,7 @@ Return Value:
 
         THROW_LAST_ERROR_IF(WriteToFile(DHCPCD_CONF_PATH, Config.c_str()) < 0);
 
-        execl(DHCPCD_PATH, DHCPCD_PATH, "-w", "-4", "-f", DHCPCD_CONF_PATH, "eth0", NULL);
+        execl(DHCPCD_PATH, DHCPCD_PATH, "-w", "-4", "-f", DHCPCD_CONF_PATH, Interface.c_str(), NULL);
         LOG_ERROR("execl({}) failed, {}", DHCPCD_PATH, errno);
     });
 
@@ -1048,6 +1051,45 @@ Return Value:
     }
 
     return WaitForChild(ChildPid, DHCPCD_PATH);
+}
+
+// WSL-Plus C4b2: 为额外接口（eth1+）启动后台 DHCP 客户端（不阻塞等租约）
+int StartExtraDhcpClients(int DhcpTimeout)
+{
+    const std::string sysNet = "/sys/class/net";
+    wil::unique_dir netDir{opendir(sysNet.c_str())};
+    if (!netDir)
+    {
+        return 0;
+    }
+
+    while (auto* entry = readdir(netDir.get()))
+    {
+        if (entry->d_name[0] == '.')
+        {
+            continue;
+        }
+        const std::string iface = entry->d_name;
+        if (iface == "lo" || iface.rfind("eth", 0) != 0 || iface == "eth0")
+        {
+            continue;
+        }
+
+        // 后台 spawn（不等待租约，交由 dhcpcd 后台维护）
+        auto ifaceCopy = iface;
+        UtilCreateChildProcess("dhcpcd-extra", [DhcpTimeout, ifaceCopy]() {
+            std::string Config = std::format(
+                "option subnet_mask, routers, broadcast, domain_name, domain_name_servers, domain_search, host_name, interface_mtu\n"
+                "noarp\n"
+                "timeout {}\n",
+                DhcpTimeout);
+            THROW_LAST_ERROR_IF(WriteToFile(DHCPCD_CONF_PATH, Config.c_str()) < 0);
+            execl(DHCPCD_PATH, DHCPCD_PATH, "-w", "-4", "-f", DHCPCD_CONF_PATH, ifaceCopy.c_str(), NULL);
+            _exit(1);
+        });
+    }
+
+    return 0;
 }
 
 int StartGuestNetworkService(int GnsFd, wil::unique_fd&& DnsTunnelingFd, uint32_t DnsTunnelingIpAddress)
@@ -3437,7 +3479,9 @@ try
 
         if (NetworkingConfiguration->EnableDhcpClient)
         {
-            StartDhcpClient(NetworkingConfiguration->DhcpTimeout);
+            StartDhcpClient(NetworkingConfiguration->DhcpTimeout, "eth0");
+            // WSL-Plus C4b2: 额外网卡（eth1+）后台 DHCP
+            StartExtraDhcpClients(NetworkingConfiguration->DhcpTimeout);
         }
 
         if (SetEphemeralPortRange(NetworkingConfiguration->EphemeralPortRangeStart, NetworkingConfiguration->EphemeralPortRangeEnd) < 0)
