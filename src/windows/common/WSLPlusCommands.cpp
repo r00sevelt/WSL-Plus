@@ -587,7 +587,7 @@ std::optional<int> Dispatch(_In_ const std::wstring& commandLine)
                 service.DetachSerialPort(&distroId);
             }
 
-            wsl::windows::common::wslplus::devices::SetPolicy(Narrow(argv[3]), wsl::windows::common::wslplus::devices::Policy::Manual, L"");
+            wsl::windows::common::wslplus::devices::SetPolicy(Narrow(argv[3]), wsl::windows::common::wslplus::devices::Policy::Manual, "");
             wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus: 设备已归还 Windows（可再 attach 挂载）");
             return 0;
         }

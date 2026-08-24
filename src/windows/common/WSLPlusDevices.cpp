@@ -13,6 +13,7 @@ Abstract:
 --*/
 
 #include "precomp.h"
+#include <shlobj.h> // FOLDERID_UserProfile
 #include "WSLPlusDevices.h"
 #include <yaml-cpp/yaml.h>
 
