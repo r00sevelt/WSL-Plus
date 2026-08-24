@@ -1069,10 +1069,43 @@ int StartExtraDhcpClients(int DhcpTimeout)
         {
             continue;
         }
-        const std::string iface = entry->d_name;
+        std::string iface = entry->d_name; // 可变: VLAN 子接口时替换为目标接口名
         if (iface == "lo" || iface.rfind("eth", 0) != 0 || iface == "eth0")
         {
             continue;
+        }
+
+        // WSL-Plus C6-2: 若存在 /etc/wslplus-vlan.conf（行格式 "iface vlanid"，如 "eth1 100"），
+        // 建立 VLAN 子接口并对其跑 DHCP（配置一次自动生效）
+        const std::string vlanConfPath = "/etc/wslplus-vlan.conf";
+        std::string vlanTagLine;
+        if (FILE* vconf = fopen(vlanConfPath.c_str(), "r"))
+        {
+            char line[128]{};
+            while (fgets(line, sizeof(line), vconf) != nullptr)
+            {
+                std::string_view lineView(line);
+                std::istringstream parts{std::string{lineView}};
+                std::string confIface, confId;
+                if (parts >> confIface >> confId)
+                {
+                    if (confIface == iface)
+                    {
+                        vlanTagLine = confId;
+                        break;
+                    }
+                }
+            }
+            fclose(vconf);
+        }
+
+        if (!vlanTagLine.empty())
+        {
+            const std::string vlanIface = iface + "." + vlanTagLine;
+            UtilExecCommandLine(std::format(
+                "ip link add link '{}' name '{}' type vlan id {} && ip link set '{}' up",
+                iface, vlanIface, vlanTagLine, vlanIface).c_str(), nullptr);
+            iface = vlanIface;
         }
 
         // 后台 spawn（不等待租约，交由 dhcpcd 后台维护）
