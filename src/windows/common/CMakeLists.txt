@@ -48,6 +48,7 @@ set(SOURCES
     WSLPlusCommands.cpp
     WSLPlusNetworks.cpp
     WSLPlusImages.cpp
+    WSLPlusDevices.cpp
     WslCoreFirewallSupport.cpp
     WslCoreHostDnsInfo.cpp
     WslCoreNetworkEndpointSettings.cpp
@@ -167,7 +168,7 @@ set_target_properties(common PROPERTIES FOLDER windows)
 target_include_directories(common PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/../service/mc/${TARGET_PLATFORM}/${CMAKE_BUILD_TYPE})
 
 # WSLCUserSettings.cpp / WSLPlusNetworks.cpp / WSLPlusImages.cpp use yaml-cpp headers.
-set_source_files_properties(WSLCUserSettings.cpp WSLPlusNetworks.cpp WSLPlusImages.cpp PROPERTIES
+set_source_files_properties(WSLCUserSettings.cpp WSLPlusNetworks.cpp WSLPlusImages.cpp WSLPlusDevices.cpp PROPERTIES
     INCLUDE_DIRECTORIES "${yaml-cpp_SOURCE_DIR}/include"
     COMPILE_DEFINITIONS "YAML_CPP_STATIC_DEFINE")
 target_link_libraries(common PRIVATE yaml-cpp)

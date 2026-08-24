@@ -17,6 +17,7 @@ Abstract:
 #include "WSLPlusCommands.h"
 #include "WSLPlusNetworks.h"
 #include "WSLPlusImages.h"
+#include "WSLPlusDevices.h"
 
 namespace wsl::windows::common::wslplus
 {
@@ -389,6 +390,92 @@ std::optional<int> Dispatch(_In_ const std::wstring& commandLine)
                 wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus: 镜像不存在");
                 return -1;
             }
+        }
+    }
+
+    //
+    // device 子命令组（D 组: 设备管理模型; wsl device list/add/rm/auto）
+    //
+    if (verb == L"device")
+    {
+        if (argc < 3)
+        {
+            wsl::windows::common::wslutil::PrintMessage(
+                L"用法: wsl device list | wsl device add <id> <type usb|serial|parallel> <host> [--instance x --policy auto|manual|dedicated] | wsl device rm <id>");
+            return 0;
+        }
+
+        const std::wstring_view devAction(argv[2]);
+        if (devAction == L"list")
+        {
+            const auto devices = wsl::windows::common::wslplus::devices::Load();
+            for (const auto& d : devices)
+            {
+                wsl::windows::common::wslutil::PrintMessage(
+                    std::format(L"{} ({}) {} -> {} [{}]", d.id, d.type, d.hostPath, d.instance, d.policy == wsl::windows::common::wslplus::devices::Policy::Auto ? L"auto" : (d.policy == wsl::windows::common::wslplus::devices::Policy::Dedicated ? L"dedicated" : L"manual")));
+            }
+            return 0;
+        }
+        else if (devAction == L"add")
+        {
+            if (argc < 6)
+            {
+                wsl::windows::common::wslutil::PrintMessage(L"用法: wsl device add <id> <type> <host> [--instance x --policy auto|manual|dedicated]");
+                return -1;
+            }
+
+            wsl::windows::common::wslplus::devices::DeviceConfig cfg;
+            cfg.id = argv[3];
+            cfg.type = wsl::windows::common::string::WideToMultiByte(argv[4]);
+            cfg.hostPath = wsl::windows::common::string::WideToMultiByte(argv[5]);
+            for (int i = 6; i < argc; ++i)
+            {
+                if (std::wstring_view(argv[i]) == L"--instance" && i + 1 < argc)
+                {
+                    cfg.instance = wsl::windows::common::string::WideToMultiByte(argv[++i]);
+                }
+                else if (std::wstring_view(argv[i]) == L"--policy" && i + 1 < argc)
+                {
+                    const auto p = wsl::windows::common::string::WideToMultiByte(argv[++i]);
+                    cfg.policy = (p == "auto") ? wsl::windows::common::wslplus::devices::Policy::Auto
+                        : (p == "dedicated")                            ? wsl::windows::common::wslplus::devices::Policy::Dedicated
+                                                                        : wsl::windows::common::wslplus::devices::Policy::Manual;
+                }
+            }
+
+            try
+            {
+                wsl::windows::common::wslplus::devices::Save(cfg);
+                wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus 设备已注册");
+                return 0;
+            }
+            catch (...)
+            {
+                wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus: 设备配置无效");
+                return -1;
+            }
+        }
+        else if (devAction == L"rm")
+        {
+            if (argc < 4)
+            {
+                wsl::windows::common::wslutil::PrintMessage(L"用法: wsl device rm <id>");
+                return -1;
+            }
+            wsl::windows::common::wslplus::devices::Remove(argv[3]);
+            wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus 设备已删除");
+            return 0;
+        }
+        else if (devAction == L"auto")
+        {
+            if (argc < 4)
+            {
+                wsl::windows::common::wslutil::PrintMessage(L"用法: wsl device auto <id> <instance>");
+                return -1;
+            }
+            wsl::windows::common::wslplus::devices::SetPolicy(argv[3], wsl::windows::common::wslplus::devices::Policy::Auto, argv[4]);
+            wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus 设备已设为自动共享");
+            return 0;
         }
     }
 
