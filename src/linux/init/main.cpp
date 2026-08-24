@@ -209,6 +209,7 @@ int StartDhcpClient(int DhcpTimeout, const std::string& Interface);
 int StartExtraDhcpClients(int DhcpTimeout);
 void ApplyAclRules();
 void ApplyQosRules();
+void ApplyStaticAddresses();
 
 int StartGuestNetworkService(int GnsFd, wil::unique_fd&& DnsTunnelingFd, uint32_t DnsTunnelingIpAddress);
 
@@ -1128,6 +1129,38 @@ void ApplyAclRules()
                 dport.empty() ? "" : std::format("--dport {}", dport).c_str(),
                 action == "accept" ? "ACCEPT" : "DROP").c_str(), nullptr);
         }
+    }
+    fclose(f);
+}
+
+// WSL-Plus C5: 静态地址配置（/etc/wslplus-static.conf，行格式 "<iface> <ip/cidr> [gateway]"，
+// 例如: eth1 192.168.10.10/24 192.168.10.1）。DHCP 之外的企业网络固定地址出口
+void ApplyStaticAddresses()
+{
+    const std::string staticPath = "/etc/wslplus-static.conf";
+    FILE* f = fopen(staticPath.c_str(), "r");
+    if (!f)
+    {
+        return;
+    }
+
+    char line[160]{};
+    while (fgets(line, sizeof(line), f) != nullptr)
+    {
+        std::istringstream parts{line};
+        std::string iface, ip, gw;
+        if (!(parts >> iface >> ip))
+        {
+            continue;
+        }
+        parts >> gw;
+
+        std::string cmd = std::format("ip addr replace {} dev '{}' && ip link set '{}' up", ip, iface, iface);
+        if (!gw.empty())
+        {
+            cmd += std::format(" && ip route replace default via {} dev '{}'", gw, iface);
+        }
+        UtilExecCommandLine(cmd.c_str(), nullptr);
     }
     fclose(f);
 }
@@ -3598,6 +3631,8 @@ try
             ApplyAclRules();
             // WSL-Plus C8: guest QoS 限速应用（/etc/wslplus-qos.conf → tc tbf）
             ApplyQosRules();
+            // WSL-Plus C5: 静态地址（/etc/wslplus-static.conf，DHCP 之外的企业网络固定地址出口）
+            ApplyStaticAddresses();
         }
 
         if (SetEphemeralPortRange(NetworkingConfiguration->EphemeralPortRangeStart, NetworkingConfiguration->EphemeralPortRangeEnd) < 0)
