@@ -207,6 +207,7 @@ void StartDebugShell();
 
 int StartDhcpClient(int DhcpTimeout, const std::string& Interface);
 int StartExtraDhcpClients(int DhcpTimeout);
+void ApplyAclRules();
 
 int StartGuestNetworkService(int GnsFd, wil::unique_fd&& DnsTunnelingFd, uint32_t DnsTunnelingIpAddress);
 
@@ -1051,6 +1052,52 @@ Return Value:
     }
 
     return WaitForChild(ChildPid, DHCPCD_PATH);
+}
+
+// WSL-Plus C7: 应用 ACL 规则（/etc/wslplus-acl.conf，行格式:
+//   <accept|drop> <proto: tcp|udp> <srcCIDR> [dport]，例: drop tcp 0.0.0.0/0 22）
+// 优先 nft，其次 iptables；配置文件不存在=不干预
+void ApplyAclRules()
+{
+    const std::string aclPath = "/etc/wslplus-acl.conf";
+    FILE* f = fopen(aclPath.c_str(), "r");
+    if (!f)
+    {
+        return;
+    }
+
+    const bool useNft = (std::filesystem::exists("/usr/sbin/nft") || std::filesystem::exists("/usr/bin/nft")) &&
+        (UtilExecCommandLine("nft list ruleset >/dev/null 2>&1", nullptr) == 0);
+
+    char line[256]{};
+    while (fgets(line, sizeof(line), f) != nullptr)
+    {
+        std::istringstream parts{line};
+        std::string action, proto, src, dport;
+        if (!(parts >> action >> proto >> src))
+        {
+            continue;
+        }
+        parts >> dport;
+
+        if (useNft)
+        {
+            UtilExecCommandLine(std::format(
+                "nft add rule inet filter input {} {} saddr {} {}",
+                action == "accept" ? "accept" : "drop",
+                proto, src,
+                dport.empty() ? "" : std::format("ct state new tcp dport {} ", dport)).c_str(), nullptr);
+        }
+        else
+        {
+            UtilExecCommandLine(std::format(
+                "iptables -A INPUT -p {} -s {} {} -j {}",
+                proto, src,
+                dport.empty() ? "" : std::format("--dport {}", dport).c_str(),
+                action == "accept" ? "ACCEPT" : "DROP").c_str(), nullptr);
+        }
+    }
+    fclose(f);
 }
 
 // WSL-Plus C4b2: 为额外接口（eth1+）启动后台 DHCP 客户端（不阻塞等租约）
@@ -3515,6 +3562,8 @@ try
             StartDhcpClient(NetworkingConfiguration->DhcpTimeout, "eth0");
             // WSL-Plus C4b2: 额外网卡（eth1+）后台 DHCP
             StartExtraDhcpClients(NetworkingConfiguration->DhcpTimeout);
+            // WSL-Plus C7: guest ACL 规则应用（/etc/wslplus-acl.conf → nft/iptables）
+            ApplyAclRules();
         }
 
         if (SetEphemeralPortRange(NetworkingConfiguration->EphemeralPortRangeStart, NetworkingConfiguration->EphemeralPortRangeEnd) < 0)
