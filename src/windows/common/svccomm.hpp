@@ -89,7 +89,7 @@ public:
     HRESULT
     ResizeDistribution(_In_ LPCGUID DistroGuid, _In_ ULONG64 NewSize) const;
 
-    // WSL-Plus: 快照命令（create|list|restore|delete）
+    // WSL-Plus: 快照命令（create|list|restore|delete）；OutputHandle 转发到 stderr（照 Resize 模式）
     HRESULT
     SnapshotDistribution(_In_ LPCGUID DistroGuid, _In_ LPCSTR action, _In_ LPCSTR name) const;
 
