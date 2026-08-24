@@ -774,6 +774,14 @@ try
         return -1;
     }
 
+    // WSL-Plus A10: 设置 @ 为默认子卷（挂载参数不带 subvol 时自动挂 @）
+    std::string SetDefaultCmd = std::format(
+        "ID=$(btrfs subvolume show '{}/@' | awk '/Subvolume ID/{{print $3}}'); btrfs subvolume set-default $ID '{}'", MountDir, DevicePath);
+    if (UtilExecCommandLine(SetDefaultCmd.c_str(), nullptr) < 0)
+    {
+        return -1;
+    }
+
     UtilExecCommandLine(std::format("umount '{}'", MountDir).c_str(), nullptr);
 
     return 0;

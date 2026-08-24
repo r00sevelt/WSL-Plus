@@ -1258,7 +1258,8 @@ std::shared_ptr<LxssRunningInstance> WslCoreVm::CreateInstance(
     message->DeviceId = lun;
     message->Flags = flags;
     message.WriteString(message->FsTypeOffset, "btrfs");
-    message.WriteString(message->MountOptionsOffset, "discard,errors=remount-ro,subvol=@");
+    // WSL-Plus A10: 挂载默认子卷（安装时 set-default=@；restore 后 set-default=目标快照，重启即切换）
+    message.WriteString(message->MountOptionsOffset, "discard,errors=remount-ro");
     message.WriteString(message->VmIdOffset, m_machineId);
     message.WriteString(message->DistributionNameOffset, Configuration.Name);
     message.WriteString(message->SharedMemoryRootOffset, sharedMemoryRoot);

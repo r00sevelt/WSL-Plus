@@ -59,8 +59,11 @@ std::string BuildCommand(Action action, const std::string& name)
     case Action::Delete:
         return std::format("{} subvolume delete '{}{}'", kBtrfsPath, kSnapshotPrefix, name);
     case Action::Restore:
-        // v0.1: 回滚 = 落盘标记（init 启动阶段消费并做子卷交换），避免破坏性在线恢复
-        return std::format("touch '{}'", RestoreMarkerPath(name));
+        // v0.2: 回滚 = 默认子卷切换（set-default 指向快照 → 重启后活动根=快照）
+        // 此前自动保底: 先把当前 @ 快照为 pre-restore-<name>（只进不退）
+        return std::format(
+            "{0} subvolume snapshot / '/@snap-pre-restore-{1}'; {2}",
+            kBtrfsPath, name, BuildSetDefaultCommand(std::format("/@snap-{}", name)));
     default:
         return "";
     }
@@ -74,5 +77,13 @@ std::string DefaultSnapshotName()
 std::string RestoreMarkerPath(const std::string& name)
 {
     return std::format("{}{}", kRestoreMarkerDir, name);
+}
+
+std::string BuildSetDefaultCommand(const std::string& subvolPath)
+{
+    // 取子卷 ID → set-default（挂载不指定 subvol 时生效；重启后活动根=该子卷）
+    return std::format(
+        "ID=$({} subvolume show '{}' | awk '/Subvolume ID/{{print $3}}'); {} subvolume set-default $ID /",
+        kBtrfsPath, subvolPath, kBtrfsPath);
 }
 } // namespace wslplus_snapshot

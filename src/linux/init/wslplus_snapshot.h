@@ -38,6 +38,12 @@ namespace wslplus_snapshot
     // 快照命名规则（集中；默认 auto-<pid>）
     std::string DefaultSnapshotName();
 
-    // 回滚标记路径（restore 落盘，init 启动阶段消费）
+    // 回滚标记路径（restore 落盘；v0.2 起恢复走"默认子卷切换"，此函数保留为标记型备选）
     std::string RestoreMarkerPath(const std::string& name);
+
+    // v0.2: 默认子卷切换命令文本——
+    //   安装时: BuildSetDefaultCommand("/@") 使挂载默认=@；
+    //   restore: BuildSetDefaultCommand("/@snap-x") 重启后活动根=快照
+    // 实现: subvolume show 取 Subvolume ID → btrfs subvolume set-default <id> <dev>
+    std::string BuildSetDefaultCommand(const std::string& subvolPath);
 }
