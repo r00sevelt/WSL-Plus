@@ -208,6 +208,7 @@ void StartDebugShell();
 int StartDhcpClient(int DhcpTimeout, const std::string& Interface);
 int StartExtraDhcpClients(int DhcpTimeout);
 void ApplyAclRules();
+void ApplyQosRules();
 
 int StartGuestNetworkService(int GnsFd, wil::unique_fd&& DnsTunnelingFd, uint32_t DnsTunnelingIpAddress);
 
@@ -1052,6 +1053,37 @@ Return Value:
     }
 
     return WaitForChild(ChildPid, DHCPCD_PATH);
+}
+
+// WSL-Plus C8: 应用 QoS 限速（/etc/wslplus-qos.conf，行格式: "<iface> <rateMbps>"，
+// 例: eth1 100）。实现: 针对该接口的出口方向加 tc tbf 限速（root qdisc）
+void ApplyQosRules()
+{
+    const std::string qosPath = "/etc/wslplus-qos.conf";
+    FILE* f = fopen(qosPath.c_str(), "r");
+    if (!f)
+    {
+        return;
+    }
+
+    char line[128]{};
+    while (fgets(line, sizeof(line), f) != nullptr)
+    {
+        std::istringstream parts{line};
+        std::string iface;
+        int rateMbps = 0;
+        if (!(parts >> iface >> rateMbps) || rateMbps <= 0)
+        {
+            continue;
+        }
+
+        // tbf: rate=<mbps>mbit burst=1024kbit limit=2048kbit（出口方向的简单令牌桶）
+        UtilExecCommandLine(std::format(
+            "tc qdisc add dev '{}' root tbf rate {}mbit burst 1024kbit limit 2048kbit 2>/dev/null || "
+            "tc qdisc replace dev '{}' root tbf rate {}mbit burst 1024kbit limit 2048kbit",
+            iface, rateMbps, iface, rateMbps).c_str(), nullptr);
+    }
+    fclose(f);
 }
 
 // WSL-Plus C7: 应用 ACL 规则（/etc/wslplus-acl.conf，行格式:
@@ -3564,6 +3596,8 @@ try
             StartExtraDhcpClients(NetworkingConfiguration->DhcpTimeout);
             // WSL-Plus C7: guest ACL 规则应用（/etc/wslplus-acl.conf → nft/iptables）
             ApplyAclRules();
+            // WSL-Plus C8: guest QoS 限速应用（/etc/wslplus-qos.conf → tc tbf）
+            ApplyQosRules();
         }
 
         if (SetEphemeralPortRange(NetworkingConfiguration->EphemeralPortRangeStart, NetworkingConfiguration->EphemeralPortRangeEnd) < 0)
