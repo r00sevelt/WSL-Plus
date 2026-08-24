@@ -30,6 +30,12 @@ namespace
         return wsl::windows::common::string::WideToMultiByte(value);
     }
 
+    // 宽助手（与 Narrow 对称：窄模块字段 → Windows 宽接口）
+    std::wstring Widen(_In_ const std::string& value)
+    {
+        return wsl::windows::common::string::MultiByteToWide(value);
+    }
+
     void PrintSnapshotUsage(); // 前向声明（定义在 ExecuteSnapshot 之后）
 
     // WSL-Plus: 快照命令执行（CLI→SvcComm→服务端→guest btrfs 模块）
@@ -511,7 +517,8 @@ std::optional<int> Dispatch(_In_ const std::wstring& commandLine)
             {
                 wsl::windows::common::SvcComm service;
                 const auto distroId = service.GetDistributionId(argv[4]);
-                return SUCCEEDED(service.AttachSerialPort(&distroId, it->hostPath.c_str())) ? 0 : -1;
+                const auto hostCom = Widen(it->hostPath);
+                return SUCCEEDED(service.AttachSerialPort(&distroId, hostCom.c_str())) ? 0 : -1;
             }
 
             if (it->type == "parallel")
@@ -551,7 +558,8 @@ std::optional<int> Dispatch(_In_ const std::wstring& commandLine)
                     }
 
                     wsl::windows::common::SvcComm service;
-                    const auto distroId = service.GetDistributionId(it->instance.c_str());
+                    const auto instanceWide = Widen(it->instance);
+                    const auto distroId = service.GetDistributionId(instanceWide.c_str());
                     // 后端 attach: busId 直传（usbipd 侧通常需要 DEVICE_ID；busId 兼容 usbipd list 输出）
                     wsl::windows::common::wslplus::usb::CreateDefault()->Attach(busId, distroId);
                     return true;
@@ -574,7 +582,8 @@ std::optional<int> Dispatch(_In_ const std::wstring& commandLine)
             if (it != devices.end() && it->type == "serial" && !it->instance.empty())
             {
                 wsl::windows::common::SvcComm service;
-                const auto distroId = service.GetDistributionId(it->instance.c_str());
+                const auto instanceWide = Widen(it->instance);
+                const auto distroId = service.GetDistributionId(instanceWide.c_str());
                 service.DetachSerialPort(&distroId);
             }
 
