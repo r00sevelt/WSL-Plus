@@ -492,6 +492,7 @@ try
 
     return session->ResizeDistribution(DistroGuid, OutputHandle, NewSize);
 }
+CATCH_RETURN(Error)
 
 HRESULT STDMETHODCALLTYPE LxssUserSession::SnapshotDistribution(_In_ LPCGUID DistroGuid, _In_ HANDLE OutputHandle, _In_ LPCSTR Action, _In_ LPCSTR Name, _Out_ LXSS_ERROR_INFO* Error)
 try
