@@ -542,7 +542,6 @@ try
     return session->DetachSerialPort(DistroGuid);
 }
 CATCH_RETURN(Error)
-CATCH_RETURN()
 
 HRESULT STDMETHODCALLTYPE LxssUserSession::CompactDistribution(_In_ LPCGUID DistroGuid, _Out_ LXSS_ERROR_INFO* Error)
 try
