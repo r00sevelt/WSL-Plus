@@ -116,7 +116,7 @@ namespace
             // usbipd list 输出解析: 每行 "BUSID STATE DEVICE_ID ..."，仅取状态==Attached 不涉及（目录层面）
             std::vector<std::string> result;
             std::wstring output = RunCommand(L"list");
-            std::wistringstream lines{wsl::windows::common::string::WideToMultiByte(output)};
+            std::istringstream lines{wsl::windows::common::string::WideToMultiByte(output)}; // 统一窄流（行内容为窄）
             std::string line;
             while (std::getline(lines, line))
             {
