@@ -29,13 +29,15 @@ Abstract:
 using namespace wsl::shared;
 using namespace wsl::windows::common;
 using namespace wsl::windows::common::string;
+using namespace wsl::windows::common::timestamp;
 using namespace wsl::windows::common::wslutil;
 using namespace wsl::windows::wslc::execution;
 using namespace wsl::windows::wslc::models;
 using namespace wsl::windows::wslc::services;
-using wsl::windows::common::string::FormatBytes;
 
 namespace wsl::windows::wslc::task {
+
+constexpr uint32_t c_reclaimedSpacePrecision = 4;
 
 namespace {
 
@@ -83,8 +85,7 @@ namespace {
         entry.Containers = image.Containers < 0 ? std::string{c_notAvailable} : std::to_string(image.Containers);
 
         entry.CreatedAt = EpochToLocalDisplayTime(image.Created);
-        entry.CreatedSince =
-            WideToMultiByte(ContainerService::FormatRelativeTime(image.Created > 0 ? static_cast<ULONGLONG>(image.Created) : 0));
+        entry.CreatedSince = WideToMultiByte(FormatRelativeTime(image.Created));
         entry.Digest = c_none;
         entry.ID = truncate ? TruncateId(image.Id, true) : image.Id;
         entry.Repository = image.Repository.value_or(std::string{c_none});
@@ -438,6 +439,7 @@ void PruneImages(CLIExecutionContext& context)
     }
 
     context.Terminal.Output(L"\n");
-    context.Terminal.Output(L"{}\n", Localization::WSLCCLI_ImagePruneSpaceReclaimedBytes(FormatBytes(result.SpaceReclaimed)));
+    context.Terminal.Output(
+        L"{}\n", Localization::WSLCCLI_ImagePruneSpaceReclaimedBytes(FormatHumanReadableSize(result.SpaceReclaimed, c_reclaimedSpacePrecision)));
 }
 } // namespace wsl::windows::wslc::task
