@@ -13,7 +13,7 @@ Abstract:
 --*/
 
 #include "precomp.h"
-#include <shlobj.h> // FOLDERID_UserProfile
+#include <shlobj_core.h> // FOLDERID_* 唯一定义处
 #include "WSLPlusDevices.h"
 #include <yaml-cpp/yaml.h>
 
