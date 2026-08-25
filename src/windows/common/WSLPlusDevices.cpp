@@ -13,7 +13,6 @@ Abstract:
 --*/
 
 #include "precomp.h"
-#include <shlobj_core.h> // FOLDERID_* 唯一定义处
 #include "WSLPlusDevices.h"
 #include <yaml-cpp/yaml.h>
 
@@ -53,7 +52,14 @@ namespace
 
 std::filesystem::path ConfigPath()
 {
-    return wsl::windows::common::filesystem::GetKnownFolderPath(FOLDERID_UserProfile) / kConfigDir / kConfigFile;
+    // 用户主目录（userenv API —— precomp 已含头/库, 无 FOLDERID 头链依赖）
+    WCHAR profile[MAX_PATH]{};
+    DWORD len = MAX_PATH;
+    if (!::GetUserProfileDirectoryW(nullptr, profile, &len))
+    {
+        THROW_LAST_ERROR();
+    }
+    return std::filesystem::path(profile) / kConfigDir / kConfigFile;
 }
 
 std::vector<DeviceConfig> Load()
