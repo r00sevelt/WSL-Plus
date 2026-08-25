@@ -285,6 +285,29 @@ created-at: 1780000000   # Unix 时间戳(uint32)
 推送纪律: 合并→示用户→经指示才 push（云动作用户指令）
 ```
 
+### 8.4a 上游同步注意事项（防踩坑清单——必读）
+```
+【远程语义（双 remote,别搞混）】
+  origin = 微软上游（fetch/pull 用这个）     plus = 我们私有仓（push 用）
+  ⚠️ 坑#1（我们踩过）: master 分支的 upstream 曾因 push -u plus 变成 plus/master
+     → git pull 在 master 上会拉"我们自己"（空更新,白跑）——
+     正确: git merge --ff-only origin/master（显式 origin）
+【顺序铁律】
+  dev 永不直接 pull/merge origin（上游只经 master 进；保持 master=上游、dev=我们）
+【覆盖保护（我们改动零丢失的保障）】
+  所有我们的改动=独立文件(wslplus_*/docs/*) + 有限修改点(§9 清单)
+  → merge 时上游碰撞概率≈0；即使冲突: git 停下等你,不会自动覆盖
+  危险命令禁用: reset --hard / checkout --（除非明确要丢弃——不用于上游同步）
+  反悔: git merge --abort（上游合并前一步即回原点,零损失）
+【推送前后】
+  推送前: git status 干净?（先 commit 自己的改动再走①②③——别带脏状态合并）
+  推送 = 用户指令（云纪律——文档 commit 只进本地,合并轮时随代码一起推）
+【上游带进来的"非代码"】
+  上游 .github/*（workflows/dependabot.yml）会随 merge 进入——它们会触发我们的
+  Actions（影响预算）: 已禁用微软 7 个 workflow; dependabot.yml 如再更新需复查
+  （PR 是 dependabot 自动开——无碍,可无视/禁用,见 docs/components/README）
+```
+
 ### 8.5 版本号策略（发布红线）
 - PACKAGE_VERSION 用于 MSI 升级判定；**必须 ≥ 已装任何版本**（官方或 Plus）
 - 建议: 产品版=主.次.补丁.0（如 3.0.0.0）；构建 fallback（无 tag 时）自动 1.0.0.0 仅编译期用——**发布必须显式传版本**
