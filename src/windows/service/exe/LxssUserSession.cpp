@@ -496,7 +496,9 @@ try
 HRESULT STDMETHODCALLTYPE LxssUserSession::SnapshotDistribution(_In_ LPCGUID DistroGuid, _In_ HANDLE OutputHandle, _In_ LPCSTR Action, _In_ LPCSTR Name, _Out_ LXSS_ERROR_INFO* Error)
 try
 {
-    const auto session = FindOrCreateUserSession(false);
+    ServiceExecutionContext context(Error);
+    const auto session = m_session.lock();
+    RETURN_HR_IF(RPC_E_DISCONNECTED, !session);
     return session->SnapshotDistribution(DistroGuid, OutputHandle, Action, Name);
 }
 CATCH_RETURN(Error)
@@ -504,7 +506,9 @@ CATCH_RETURN(Error)
 HRESULT STDMETHODCALLTYPE LxssUserSession::CloneDistribution(_In_ LPCGUID DistroGuid, _In_ LPCWSTR NewName, _In_ BOOLEAN FullClone, _Out_ LXSS_ERROR_INFO* Error)
 try
 {
-    const auto session = FindOrCreateUserSession(false);
+    ServiceExecutionContext context(Error);
+    const auto session = m_session.lock();
+    RETURN_HR_IF(RPC_E_DISCONNECTED, !session);
     return session->CloneDistribution(DistroGuid, NewName, FullClone);
 }
 CATCH_RETURN(Error)
@@ -512,7 +516,9 @@ CATCH_RETURN(Error)
 HRESULT STDMETHODCALLTYPE LxssUserSession::ApplyPortMappings(_In_ LPCGUID DistroGuid, _In_ LPCSTR PortsJson, _Out_ LXSS_ERROR_INFO* Error)
 try
 {
-    const auto session = FindOrCreateUserSession(false);
+    ServiceExecutionContext context(Error);
+    const auto session = m_session.lock();
+    RETURN_HR_IF(RPC_E_DISCONNECTED, !session);
     return session->ApplyPortMappings(DistroGuid, PortsJson);
 }
 CATCH_RETURN(Error)
@@ -520,7 +526,9 @@ CATCH_RETURN(Error)
 HRESULT STDMETHODCALLTYPE LxssUserSession::AttachSerialPort(_In_ LPCGUID DistroGuid, _In_ LPCWSTR HostComName, _Out_ LXSS_ERROR_INFO* Error)
 try
 {
-    const auto session = FindOrCreateUserSession(false);
+    ServiceExecutionContext context(Error);
+    const auto session = m_session.lock();
+    RETURN_HR_IF(RPC_E_DISCONNECTED, !session);
     return session->AttachSerialPort(DistroGuid, HostComName);
 }
 CATCH_RETURN(Error)
@@ -528,7 +536,9 @@ CATCH_RETURN(Error)
 HRESULT STDMETHODCALLTYPE LxssUserSession::DetachSerialPort(_In_ LPCGUID DistroGuid, _Out_ LXSS_ERROR_INFO* Error)
 try
 {
-    const auto session = FindOrCreateUserSession(false);
+    ServiceExecutionContext context(Error);
+    const auto session = m_session.lock();
+    RETURN_HR_IF(RPC_E_DISCONNECTED, !session);
     return session->DetachSerialPort(DistroGuid);
 }
 CATCH_RETURN(Error)
