@@ -258,7 +258,7 @@ created-at: 1780000000   # Unix 时间戳(uint32)
 5. 构建: `cmake --build . --config Release --target wsl wslservice -- /m:4`（云满配）
 6. Qt GUI(独立): `cmake -S src/windows/qtgui -B build-gui -DCMAKE_PREFIX_PATH=<Qt6>`（需 Qt6; Doxygen 可选）
 
-### 8.2 八大坑证据库（每坑: 症状/证据/根因/修复/验证）
+### 8.2 坑证据库（已修 10 坑 + 未决 2 坑; 每坑: 症状/根因/修复/验证）
 | # | 症状(日志证据) | 根因 | 修复 | 验证 |
 |---|---|---|---|---|
 | 1 | MSB8013 无 Release\|x64 | 未 -A x64 | configure 加 -A x64 | configure 后 vcxproj 含 x64 配置 |
@@ -266,14 +266,18 @@ created-at: 1780000000   # Unix 时间戳(uint32)
 | 3 | MSB8084 JsonRpc+ C4828 @pch | 仓库中文路径→GBK 写入 PCH | 全英文路径 | 移动后不再现 |
 | 4 | C3859/C1076 PCH 虚拟内存 | 大 PCH /Zm 误配 | WSL_DISABLE_PCH+全局 /FI precomp.h | 禁 PCH 后内存平稳 |
 | 5 | C2653 wil 类未识 | DnsResolver 先包含未含 precomp | /FI 注入(同#4) | 编译过 |
-| 6 | C2679/C2664 宽窄混传 | CLI 裸 argv/LPSTR→窄接口 | Narrow/Widen 助手(边界转换) | 全 CLI 编译过 |
+| 6 | C2679 宽窄混传 | CLI 裸 argv/LPSTR→窄接口 | Narrow/Widen 助手(边界转换) | 全 CLI 编译过 |
 | 7 | C2065 FOLDERID_UserProfile | 头链死坑(shlobj_core 无效) | GetUserProfileDirectoryW(userenv) | 编译过 |
 | 8 | C2317/C2311 try/catch | 插入残留孤立 CATCH_RETURN() | 删孤行 | 编译过 |
-（全部记录于审计日志/索引 §4）
+| 9 | C2440 ModifyRequestType 域混用 | hns::ModifyRequestType 传给 hcs 域函数 | 一律 hcs::ModifyRequestType(Add/Remove 限定) | 编译过(第11轮) |
+| 10 | C3083/C2039 臆造命名空间 | wslplus::networks::Attachments::Load 引用错层 | include WSLPlusNetworks.h | 编译过(第11轮) |
+| 11 | C2664 schema 错位 | HNSEndpoint(查询schema) 作创建入参; 实要 HostComputeEndpoint(设置schema) | 照 BridgedNetworking.cpp:50-63(SchemaVersion 2.16/HostComputeNetwork/Policies) | ⚠️ 未决(WslCoreVm.cpp:1594) |
+| 12 | C2664 Send 模板绑定 | Send(message.Span()) 临时量绑非const引用 | Send(message) —— 对齐 WslCoreVm.cpp:2338/2670/2723 模式 | ⚠️ 未决(WslCoreVm.cpp:2694) |
+（坑#1-10 已修闭环; #11-12 待修——以当日云端失败日志为准）
 
 ### 8.3 CI 与预算
-- GitHub Actions(私有仓/windows-latest 4C16G): `wsl+wslservice /m:4` 全量；concurrency cancel-in-progress；默认分支 dev
-- 计费: Windows ×2（2000 分钟=实 1000）；备胎: **Azure Pipelines（1800/月 1:1）**（WSL 官方 CI 同源）
+- GitHub Actions(公开仓/windows-latest 4C16G): `wsl+wslservice /m:4` 全量；concurrency cancel-in-progress；默认分支 dev
+- 计费: 公开仓免费额度充裕（若日后转私有仓: 2000 分钟/月, Windows ×2 计费=实 1000）；备胎: **Azure Pipelines（1800/月 1:1）**（WSL 官方 CI 同源）
 - 云端纪律: 推送/合并/取消/检查一律=用户指令（开发准则红线）
 
 ### 8.4 上游合并流程（双轨三步——新人必读）
@@ -288,7 +292,7 @@ created-at: 1780000000   # Unix 时间戳(uint32)
 ### 8.4a 上游同步注意事项（防踩坑清单——必读）
 ```
 【远程语义（双 remote,别搞混）】
-  origin = 微软上游（fetch/pull 用这个）     plus = 我们私有仓（push 用）
+  origin = 微软上游（fetch/pull 用这个）     plus = 我们公开仓（push 用）
   ⚠️ 坑#1（我们踩过）: master 分支的 upstream 曾因 push -u plus 变成 plus/master
      → git pull 在 master 上会拉"我们自己"（空更新,白跑）——
      正确: git merge --ff-only origin/master（显式 origin）

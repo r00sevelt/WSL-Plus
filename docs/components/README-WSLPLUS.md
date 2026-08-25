@@ -5,7 +5,7 @@
 
 ## 快速开始
 ```
-1. 构建环境: VS 2026(MSVC v180 + ATL + Clang组件22.1.3 + Spectre库) + CMake ≥4
+1. 构建环境: VS 2026(MSVC v180 + ATL + Clang组件22.1.3 + Spectre库) + CMake ≥3.25（推荐 4.4.x, 同手册 §8.1）
    （详见开发手册 §8.1 —— 含每个组件的确切选择）
 2. configure: cmake . -A x64 -DWSL_SKIP_GLUE_PACKAGE=ON -DWSL_DISABLE_PCH=ON -DCMAKE_BUILD_TYPE=Release
 3. build: cmake --build . --config Release --target wsl wslservice -- /m:4

@@ -7,7 +7,7 @@
 - 宿主机: 安装本 MSI（wslservice 替换）+ 一个 Ubuntu 发行版
 - guest: apt install btrfs-progs（确保 mkfs.btrfs；静态注入 E5 后免）
 - 网络: 预置 vSwitch（可 DNS 命名 bridge）；usbipd（仅 T6）
-- 测试机: 我们仓库 feature 分支的 wsl.exe（CI 产物或本地构建）
+- 测试机: 我们仓库 feature 分支的 wsl.exe（CI 产物——本地不构建, 编译全在云端 Actions）
 ```
 
 ## 2. T1（快照全链脚本化）
