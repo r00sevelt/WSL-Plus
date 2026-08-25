@@ -398,7 +398,7 @@ std::optional<int> Dispatch(_In_ const std::wstring& commandLine)
 
             try
             {
-                wsl::windows::common::wslplus::images::Remove(Narrow(argv[3]));
+                wsl::windows::common::wslplus::images::Remove(argv[3]);
                 wsl::windows::common::wslutil::PrintMessage(L"WSL-Plus 镜像已删除");
                 return 0;
             }

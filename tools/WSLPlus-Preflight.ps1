@@ -36,7 +36,8 @@ foreach ($f in @("WSLPlusNetworks.cpp","WSLPlusImages.cpp","WSLPlusDevices.cpp")
 }
 
 # Check 4: bare argv passed to narrow-interface module calls
-$callFiles = @("WSLPlusCommands.cpp","WSLPlusNetworks.cpp","WSLPlusDevices.cpp","WSLPlusImages.cpp","WSLPlusUsb.cpp")
+# NOTE: images::Remove/Import are WIDE (LPCWSTR) - excluded. Narrow set: networks/devices only.
+$callFiles = @("WSLPlusCommands.cpp","WSLPlusNetworks.cpp","WSLPlusDevices.cpp")
 foreach ($f in $callFiles) {
     $p = "$repo\src\windows\common\$f"
     if (Test-Path $p) {
