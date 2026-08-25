@@ -14,6 +14,7 @@ Abstract:
 
 #include "precomp.h"
 #include "WslCoreVm.h"
+#include "WSLPlusNetworks.h"
 #include "WslCoreNetworkingSupport.h"
 #include <lxfsshares.h>
 #include "disk.hpp"
@@ -1484,7 +1485,7 @@ void WslCoreVm::AttachSerialPort(_In_ LPCWSTR hostComName)
     // Modify Add: VirtualMachine/Devices/ComPorts/{index}
     hcs::ModifySettingRequest<hcs::ComPort> request{};
     request.ResourcePath = L"VirtualMachine/Devices/ComPorts/1"; // 1..N: 0 是调试控制台预留
-    request.RequestType = wsl::shared::hns::ModifyRequestType::Add;
+    request.RequestType = hcs::ModifyRequestType::Add;
     request.Settings.NamedPipe = m_serialPipeName;
     wsl::windows::common::hcs::ModifyComputeSystem(m_system.get(), wsl::shared::ToJsonW(request).c_str());
 
@@ -1503,7 +1504,8 @@ void WslCoreVm::AttachSerialPort(_In_ LPCWSTR hostComName)
         dcb.ByteSize = 8;
         dcb.StopBits = ONESTOPBIT;
         SetCommState(hostCom, &dcb);
-        SetCommTimeouts(hostCom, []() { COMMTIMEOUTS t{100, 0, 0, 0, 0}; return t; }());
+        COMMTIMEOUTS timeouts{100, 0, 0, 0, 0};
+        SetCommTimeouts(hostCom, &timeouts);
 
         wil::unique_handle pipeHandle(pipe);
         wil::unique_handle comHandle(hostCom);
@@ -1549,7 +1551,7 @@ void WslCoreVm::DetachSerialPort()
         {
             hcs::ModifySettingRequest<hcs::ComPort> request{};
             request.ResourcePath = L"VirtualMachine/Devices/ComPorts/1";
-            request.RequestType = wsl::shared::hns::ModifyRequestType::Remove;
+            request.RequestType = hcs::ModifyRequestType::Remove;
             request.Settings.NamedPipe = m_serialPipeName;
             wsl::windows::common::hcs::ModifyComputeSystem(m_system.get(), wsl::shared::ToJsonW(request).c_str());
         }
@@ -1594,7 +1596,7 @@ void WslCoreVm::ApplyExtraNetworkAdapters()
                 // Attach（照 NatNetworking::AttachEndpoint 模式: ModifyComputeSystem(Add, NetworkAdapter)）
                 hcs::ModifySettingRequest<hcs::NetworkAdapter> networkRequest{};
                 networkRequest.ResourcePath = wsl::core::networking::c_networkAdapterPrefix + wsl::shared::string::GuidToString<wchar_t>(hnsEndpoint.ID);
-                networkRequest.RequestType = wsl::shared::hns::ModifyRequestType::Add;
+                networkRequest.RequestType = hcs::ModifyRequestType::Add;
                 networkRequest.Settings.EndpointId = hnsEndpoint.ID;
                 networkRequest.Settings.InstanceId = hnsEndpoint.ID;
                 networkRequest.Settings.MacAddress = wsl::shared::string::ParseMacAddress(hnsEndpoint.MacAddress);
