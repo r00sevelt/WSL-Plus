@@ -36,12 +36,13 @@ foreach ($f in @("WSLPlusNetworks.cpp","WSLPlusImages.cpp","WSLPlusDevices.cpp")
 }
 
 # Check 4: bare argv passed to narrow-interface module calls
-# NOTE: images::Remove/Import are WIDE (LPCWSTR) - excluded. Narrow set: networks/devices only.
+# Precision: only networks::/devices:: calls (files images:: are WIDE=LPCWSTR - must NOT match)
 $callFiles = @("WSLPlusCommands.cpp","WSLPlusNetworks.cpp","WSLPlusDevices.cpp")
+$narrowCallRe = "(networks|devices)::(Remove|Save|Attach|Detach|SetPolicy|Attachments|Load)\(\s*argv"
 foreach ($f in $callFiles) {
     $p = "$repo\src\windows\common\$f"
     if (Test-Path $p) {
-        $h = Select-String -Path $p -Pattern "SetPolicy\(\s*argv|Remove\(\s*argv|Attach\(\s*argv|Attachments\(\s*argv"
+        $h = Select-String -Path $p -Pattern $narrowCallRe
         if ($h) { foreach ($m in $h) { $problems += "${f}:$($m.LineNumber) : bare argv to narrow interface (use Narrow())" } }
     }
 }
