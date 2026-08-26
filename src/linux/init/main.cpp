@@ -63,6 +63,7 @@ Abstract:
 #include "binfmt.h"
 #include "address.h"
 #include "SocketChannel.h"
+#include "wslplus_snapshot.h"
 
 #define BSDTAR_PATH "/usr/bin/bsdtar"
 #define BINFMT_REGISTER_STRING BINFMT_INTEROP_REGISTRATION_STRING_VM(LX_INIT_BINFMT_NAME) "\n"
@@ -3191,7 +3192,7 @@ try
 
     const int ChildPid = UtilCreateChildProcess(
         "Snapshot",
-        [Message, action, name, Channel = wsl::shared::SocketChannel{std::move(SocketFd), "Snapshot"}, OutputSocket = std::move(OutputSocketFd)]() mutable {
+        [action, name, Channel = wsl::shared::SocketChannel{std::move(SocketFd), "Snapshot"}, OutputSocket = std::move(OutputSocketFd)]() mutable {
             int ResponseCode = -1;
             auto ReportStatus = wil::scope_exit([&]() {
                 LX_MINI_INIT_SNAPSHOT_RESPONSE_MESSAGE ResponseMessage{};
