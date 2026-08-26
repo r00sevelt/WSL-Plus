@@ -2699,7 +2699,8 @@ void WslCoreVm::SnapshotDistribution(_In_ ULONG Lun, _In_ HANDLE OutputHandle, _
     message.WriteString(message->NameOffset, name);
 
     auto transaction = m_miniInitChannel.StartTransaction();
-    transaction.Send(message);
+    // MessageWriter 模式: 显式模板参数 + Span()（对齐 MOUNT/EARLY_CONFIG 同款; Send(message) 会推成 MessageWriter 无 PrettyPrint）
+    transaction.Send<LX_MINI_INIT_SNAPSHOT_MESSAGE>(message.Span());
 
     wsl::shared::SocketChannel channel{AcceptConnection(m_vmConfig.KernelBootTimeout), "Snapshot", {m_terminatingEvent.get()}};
 
