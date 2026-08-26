@@ -33,3 +33,12 @@ jobs:
       - name: "产物检查（全量）"
         run: |
           Get-ChildItem bin\x64\Release\wsl.exe, bin\x64\Release\wslservice.exe | Select-Object FullName, Length
+
+      - name: "上传产物（构建成功才执行）"
+        if: success()
+        uses: actions/upload-artifact@v5
+        with:
+          name: wslplus-release-x64
+          path: |
+            bin\x64\Release\wsl.exe
+            bin\x64\Release\wslservice.exe

@@ -1590,16 +1590,24 @@ void WslCoreVm::ApplyExtraNetworkAdapters()
                     continue;
                 }
 
-                wsl::shared::hns::HNSEndpoint hnsEndpoint{};
+                // 端点设置（照 BridgedNetworking 模式: HostComputeEndpoint schema + PortName policy）
+                wsl::shared::hns::HostComputeEndpoint hnsEndpoint{};
+                hnsEndpoint.SchemaVersion.Major = 2;
+                hnsEndpoint.SchemaVersion.Minor = 16;
+                hnsEndpoint.HostComputeNetwork = id;
+                wsl::shared::hns::EndpointPolicy<wsl::shared::hns::PortnameEndpointPolicySetting> endpointPortNamePolicy{};
+                endpointPortNamePolicy.Type = wsl::shared::hns::EndpointPolicyType::PortName;
+                hnsEndpoint.Policies.emplace_back(std::move(endpointPortNamePolicy));
                 auto endpoint = wsl::core::networking::CreateEphemeralHcnEndpoint(network.get(), hnsEndpoint);
 
-                // Attach（照 NatNetworking::AttachEndpoint 模式: ModifyComputeSystem(Add, NetworkAdapter)）
+                // Attach（照 BridgedNetworking 模式: ModifyComputeSystem(Add, NetworkAdapter)）
                 hcs::ModifySettingRequest<hcs::NetworkAdapter> networkRequest{};
-                networkRequest.ResourcePath = wsl::core::networking::c_networkAdapterPrefix + wsl::shared::string::GuidToString<wchar_t>(hnsEndpoint.ID);
+                networkRequest.ResourcePath = wsl::core::networking::c_networkAdapterPrefix +
+                                              wsl::shared::string::GuidToString<wchar_t>(endpoint.Id, wsl::shared::string::GuidToStringFlags::None);
                 networkRequest.RequestType = hcs::ModifyRequestType::Add;
-                networkRequest.Settings.EndpointId = hnsEndpoint.ID;
-                networkRequest.Settings.InstanceId = hnsEndpoint.ID;
-                networkRequest.Settings.MacAddress = wsl::shared::string::ParseMacAddress(hnsEndpoint.MacAddress);
+                networkRequest.Settings.EndpointId = endpoint.Id;
+                networkRequest.Settings.InstanceId = endpoint.Id;
+                // MAC 不设静态值: 由 HNS 自动分配（照 NatNetworking 模式）; endpoint 为 RAII, 析构自动删 HCN 端点
                 wsl::windows::common::hcs::ModifyComputeSystem(m_system.get(), wsl::shared::ToJsonW(networkRequest).c_str());
                 WSL_LOG("WSL-Plus: extra network adapter attached", TraceLoggingValue(netName.c_str(), "network"));
                 break;
@@ -2691,7 +2699,7 @@ void WslCoreVm::SnapshotDistribution(_In_ ULONG Lun, _In_ HANDLE OutputHandle, _
     message.WriteString(message->NameOffset, name);
 
     auto transaction = m_miniInitChannel.StartTransaction();
-    transaction.Send(message.Span());
+    transaction.Send(message);
 
     wsl::shared::SocketChannel channel{AcceptConnection(m_vmConfig.KernelBootTimeout), "Snapshot", {m_terminatingEvent.get()}};
 
