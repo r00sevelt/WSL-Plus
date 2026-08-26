@@ -327,7 +327,7 @@ created-at: 1780000000   # Unix 时间戳(uint32)
   src/windows/qtgui/*(独立 Qt 子工程)
   src/linux/init/wslplus_snapshot.* (guest 快照模块)
   docs/WSLPLUS-DEV-GUIDELINES * NETWORK-PHASE-DESIGN * PUBLISHING * USBDEV-STUDY * C9-OVN-DESIGN
-修改点(有限): CMakeLists(开关/链接) · WslCoreVm(4扩展) · WslCoreFilesystem(CreateLinkedVhd)
+修改点(有限): CMakeLists(开关/链接) · WslCoreVm(4扩展) · WslCoreFilesystem(CreateLinkedVhd) · msipackage/package.wix.in(删 MSIX 内嵌 Binary——MSIX 根除落脚点)
   · LxssUserSession(5接口) · svccomm/* · wslservice.idl · main.cpp(FormatDevice/网络/快照处理)
   · lxinitshared.h(消息) · tools/create-initrd.ps1(E5)
 阅读入口: §2.3 时序链 → 对应文件 grep 函数名即可上手

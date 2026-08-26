@@ -651,7 +651,9 @@
         </Feature>
 
         <Binary Id="wslinstall.dll" SourceFile="${PACKAGE_INPUT_DIR}/wslinstall.dll" />
-        <Binary Id="msixpackage" SourceFile="${PACKAGE_INPUT_DIR}/gluepackage.msix"/>
+        <!-- WSL-Plus 修改点#MSIX: 不内嵌 gluepackage.msix（MSIX 根除——WSL_SKIP_GLUE_PACKAGE=ON 不产该文件, 内嵌引用报 WIX0103）;
+             上方 InstallMsix/RemoveMsix*/DeprovisionMsix 等 CustomAction 保留 = 安装/卸载时清理官方 Store(MSIX) 版残留 -->
+
 
         <CustomAction Id="ValidateInstall"
             Impersonate="no"
