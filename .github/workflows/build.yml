@@ -25,14 +25,16 @@ jobs:
         run: |
           cmake . -A x64 -DWSL_SKIP_GLUE_PACKAGE=ON -DWSL_DISABLE_PCH=ON -DCMAKE_BUILD_TYPE=Release
 
-      # WSL-Plus S6 验收档: 全量验证 wsl + wslservice（P1 产品链，错误一次性收集集中修）
-      - name: "全量验证: 编译 wsl + wslservice（m:4 云上满配）"
+      # WSL-Plus 全链: target=msipackage —— 依赖图自动拉全产品链(wsl/wslg/wslservice/wslhost/wslrelay/
+      # proxystubs/init/initramfs/wslc/wslcsession) 并产出 wsl.msi (WiX 由 NuGet 拉取)
+      # 包格式红线: 仅 x64 + EXE + MSI；msixgluepackage / msixinstaller / storebroker 一律不引（MSIX 根除）
+      - name: "全量编译 + 打包 MSI（m:4 云上满配）"
         run: |
-          cmake --build . --config Release --target wsl wslservice -- /m:4
+          cmake --build . --config Release --target msipackage -- /m:4
 
-      - name: "产物检查（全量）"
+      - name: "产物检查（EXE + MSI）"
         run: |
-          Get-ChildItem bin\x64\Release\wsl.exe, bin\x64\Release\wslservice.exe | Select-Object FullName, Length
+          Get-ChildItem bin\x64\Release\wsl.exe, bin\x64\Release\wslservice.exe, bin\x64\Release\wsl.msi | Select-Object FullName, Length
 
       - name: "上传产物（构建成功才执行）"
         if: success()
@@ -42,3 +44,4 @@ jobs:
           path: |
             bin\x64\Release\wsl.exe
             bin\x64\Release\wslservice.exe
+            bin\x64\Release\wsl.msi

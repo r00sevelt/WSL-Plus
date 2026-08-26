@@ -316,6 +316,7 @@ created-at: 1780000000   # Unix 时间戳(uint32)
 - PACKAGE_VERSION 用于 MSI 升级判定；**必须 ≥ 已装任何版本**（官方或 Plus）
 - 建议: 产品版=主.次.补丁.0（如 3.0.0.0）；构建 fallback（无 tag 时）自动 1.0.0.0 仅编译期用——**发布必须显式传版本**
 - 改法: configure 时 `cmake -DPACKAGE_VERSION=3.0.0.0 ...`（或改 version_functions.ps1 的 fallback 常量）
+- 打包规格(红线): 仅 **x64/Release + EXE + MSI** 三类产物; `msipackage` target 产 wsl.msi; msixgluepackage/msixinstaller/storebroker 不引不产（MSIX 根除, 同 README-WSLPLUS）
 
 ---
 
