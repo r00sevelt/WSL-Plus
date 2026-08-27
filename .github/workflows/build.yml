@@ -23,7 +23,7 @@ jobs:
 
       - name: "配置构建参数（低内存、禁用PCH、跳过gluepackage）"
         run: |
-          cmake . -A x64 -DWSL_SKIP_GLUE_PACKAGE=ON -DWSL_DISABLE_PCH=ON -DCMAKE_BUILD_TYPE=Release
+          cmake . -A x64 -DWSL_SKIP_GLUE_PACKAGE=ON -DWSL_DISABLE_PCH=ON -DWSL_BUILD_WSL_SETTINGS=ON -DCMAKE_BUILD_TYPE=Release
 
       # WSL-Plus 全链: target=msipackage —— 依赖图自动拉全产品链(wsl/wslg/wslservice/wslhost/wslrelay/
       # proxystubs/init/initramfs/wslc/wslcsession) 并产出 wsl.msi (WiX 由 NuGet 拉取)
