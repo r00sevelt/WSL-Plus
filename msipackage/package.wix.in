@@ -853,6 +853,8 @@
         <!-- Test-only: allows forcing install failure for rollback validation -->
         <?if "${OFFICIAL_BUILD}" != "TRUE" ?>
         <Property Id="WSL_TEST_FORCE_INSTALL_FAILURE" Secure="yes" />
+        <!-- WSL-Plus 修改点#MSIX-2: 全局跳过 MSIX 动作链——本包根除 MSIX(无内嵌/无 Store 包), 官方 6 个 MSIX CustomAction 的 (not SKIPMSIX = 1) 条件全部因本级开关失效 → 安装/卸载不再找 MSIX 包(修复"无法删除 msix 程序包(错误:找不到包)") -->
+        <Property Id="SKIPMSIX" Value="1" Secure="yes" />
         <?endif?>
     </Package>
 </Wix>
