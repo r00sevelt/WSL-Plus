@@ -137,6 +137,7 @@ wsl image list|import <tar> <name> [--desc x]|rm <name>
 ### 4.5 GUI（N0-GUI 骨架，独立 Qt6）
 - 运行: 编译 qtgui 后 wslplus-desktop.exe；页签: 发行版/网络/设备
 - 后端通信=调用 wsl.exe 命令面（零耦合）；后续: QML 拓扑画布(=消费 networks.yaml 渲染 VMware 式编辑器)
+- 与官方 WSL Settings 的关系(第19-20轮定案): 官方 WinUI Settings 随包(WSL_BUILD_WSL_SETTINGS=true)作默认入口; Qt 面板**独立共存**(各自入口/协议, 不冲突); **替换路线**=V1 可用后评估接管 wsl-settings:// 协议(详见组件 qtgui 文档)
 
 ---
 
@@ -275,8 +276,9 @@ created-at: 1780000000   # Unix 时间戳(uint32)
 | 12 | C2664 Send 模板绑定 | Send(message.Span()) 临时量绑非const引用 | Send(message) —— 对齐 WslCoreVm.cpp:2338/2670/2723 模式 | ⚠️ 未决(WslCoreVm.cpp:2694) |
 （坑#1-10 已修闭环; #11-12 待修——以当日云端失败日志为准）
 
-### 8.3 CI 与预算
-- GitHub Actions(公开仓/windows-latest 4C16G): `wsl+wslservice /m:4` 全量；concurrency cancel-in-progress；默认分支 dev
+### 8.3 CI 与预算（当前真实配置）
+- GitHub Actions(公开仓/windows-latest 4C16G): configure 参数=SKIP_GLUE_PACKAGE=ON, DISABLE_PCH=ON, WSL_BUILD_WSL_SETTINGS=true, PACKAGE_VERSION=3.0.0.0; 构建 target=**msipackage 全链**(依赖图拉 wsl/wslg/wslservice/wslhost/wslrelay/proxystub×2/init/initramfs/wslc/wslcsession + WiX 打 MSI); concurrency cancel-in-progress; 默认分支 dev; **全链+打包≈1h**
+- 交付物(第21轮定稿): **单包 wsl.<PACKAGE_VERSION>.x64.msi**(如 wsl.3.0.0.0.x64.msi)——唯一交付物; wsl.exe/wslservice.exe 为裸二进制(仅调试/替换, 不入交付); MSIX 根除(不产不传)
 - 计费: 公开仓免费额度充裕（若日后转私有仓: 2000 分钟/月, Windows ×2 计费=实 1000）；备胎: **Azure Pipelines（1800/月 1:1）**（WSL 官方 CI 同源）
 - 云端纪律: 推送/合并/取消/检查一律=用户指令（开发准则红线）
 
@@ -313,10 +315,10 @@ created-at: 1780000000   # Unix 时间戳(uint32)
 ```
 
 ### 8.5 版本号策略（发布红线）
-- PACKAGE_VERSION 用于 MSI 升级判定；**必须 ≥ 已装任何版本**（官方或 Plus）
-- 建议: 产品版=主.次.补丁.0（如 3.0.0.0）；构建 fallback（无 tag 时）自动 1.0.0.0 仅编译期用——**发布必须显式传版本**
+- PACKAGE_VERSION 用于 MSI 升级判定；**必须 > 官方当前所有已发布版本 + 自家所有已发布版本**（撞号=升级判定/安装器混淆——**发布前 `gh api repos/microsoft/WSL/releases` 复核官方最新号；官方≥我们的号则大版本+1 再发**）
+- 当前产品线: **3.0.0.0**（> 官方 2.9.9.0; 语义=WSL-Plus 独立线, 非 WSL1/官方分支号）; 构建 fallback（无 tag 时）自动 1.0.0.0 仅编译期用——**发布必须显式传版本**
 - 改法: configure 时 `cmake -DPACKAGE_VERSION=3.0.0.0 ...`（或改 version_functions.ps1 的 fallback 常量）
-- 打包规格(红线): 仅 **x64/Release + EXE + MSI** 三类产物; `msipackage` target 产 wsl.msi; msixgluepackage/msixinstaller/storebroker 不引不产（MSIX 根除, 同 README-WSLPLUS）
+- 打包规格(红线): 仅 **x64/Release 单 MSI 交付**（wsl.<版本>.x64.msi）; EXE 仅调试件; msixgluepackage/msixinstaller/storebroker 不引不产（MSIX 根除）
 
 ---
 
@@ -327,7 +329,7 @@ created-at: 1780000000   # Unix 时间戳(uint32)
   src/windows/qtgui/*(独立 Qt 子工程)
   src/linux/init/wslplus_snapshot.* (guest 快照模块)
   docs/WSLPLUS-DEV-GUIDELINES * NETWORK-PHASE-DESIGN * PUBLISHING * USBDEV-STUDY * C9-OVN-DESIGN
-修改点(有限): CMakeLists(开关/链接) · WslCoreVm(4扩展) · WslCoreFilesystem(CreateLinkedVhd) · msipackage/package.wix.in(删 MSIX 内嵌 Binary——MSIX 根除落脚点)
+修改点(有限): CMakeLists(开关/链接) · WslCoreVm(4扩展) · WslCoreFilesystem(CreateLinkedVhd) · msipackage/package.wix.in(2处: ①删 MSIX 内嵌 Binary ②SKIPMSIX=1 开关——官方 MSIX 动作链全跳过/修"找不到包"致命bug)
   · LxssUserSession(5接口) · svccomm/* · wslservice.idl · main.cpp(FormatDevice/网络/快照处理)
   · lxinitshared.h(消息) · tools/create-initrd.ps1(E5)
 阅读入口: §2.3 时序链 → 对应文件 grep 函数名即可上手

@@ -23,7 +23,7 @@ jobs:
 
       - name: "配置构建参数（低内存、禁用PCH、跳过gluepackage）"
         run: |
-          cmake . -A x64 -DWSL_SKIP_GLUE_PACKAGE=ON -DWSL_DISABLE_PCH=ON -DWSL_BUILD_WSL_SETTINGS=true -DCMAKE_BUILD_TYPE=Release
+          cmake . -A x64 -DWSL_SKIP_GLUE_PACKAGE=ON -DWSL_DISABLE_PCH=ON -DWSL_BUILD_WSL_SETTINGS=true -DPACKAGE_VERSION=3.0.0.0 -DCMAKE_BUILD_TYPE=Release
 
       # WSL-Plus 全链: target=msipackage —— 依赖图自动拉全产品链(wsl/wslg/wslservice/wslhost/wslrelay/
       # proxystubs/init/initramfs/wslc/wslcsession) 并产出 wsl.msi (WiX 由 NuGet 拉取)
@@ -32,9 +32,14 @@ jobs:
         run: |
           cmake --build . --config Release --target msipackage -- /m:4
 
-      - name: "产物检查（EXE + MSI）"
+      - name: "产物检查（MSI 单包交付）"
         run: |
-          Get-ChildItem bin\x64\Release\wsl.exe, bin\x64\Release\wslservice.exe, bin\x64\Release\wsl.msi | Select-Object FullName, Length
+          Get-ChildItem bin\x64\Release\wsl.msi | Select-Object FullName, Length
+
+      - name: "交付命名: wsl.<版本>.<架构>.msi（对齐官方命名）"
+        run: |
+          Move-Item bin\x64\Release\wsl.msi bin\x64\Release\wsl.3.0.0.0.x64.msi -Force
+          Get-Item bin\x64\Release\wsl.3.0.0.0.x64.msi | Select-Object Name, Length
 
       - name: "上传产物（构建成功才执行）"
         if: success()
@@ -42,6 +47,4 @@ jobs:
         with:
           name: wslplus-release-x64
           path: |
-            bin\x64\Release\wsl.exe
-            bin\x64\Release\wslservice.exe
-            bin\x64\Release\wsl.msi
+            bin\x64\Release\wsl.3.0.0.0.x64.msi

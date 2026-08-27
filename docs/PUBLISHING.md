@@ -16,8 +16,8 @@ MSI UpgradeCode 与官方相同(6D5B792B-...) → 同升级码 + 版本更高 = 
   ① 用户装过【官方 MSI 版】  → 安装我们的 wsl.msi = 直接覆盖升级（数据/发行版保留）
   ② 用户装过【Store MSIX 版】→ 先 wsl --uninstall 卸载 Store 版 → 装我们的 MSI（互斥）
   ③ 我们后续发布新版本  → 版本号递增重新打包 → 直接覆盖旧 Plus
-⚠️ 版本红线: PACKAGE_VERSION 必须 ≥ 已装版本（当前 fallback 1.0.0.0 过低；
-  发布 v1 前设为高位，如 3.0.0.0 或自定义线上版本号），否则 MSI 拒绝降级安装
+⚠️ 版本红线: PACKAGE_VERSION **必须 > 官方当前所有已发布版本 + 自家已发布版本**（当前线: 3.0.0.0 > 官方 2.9.9.0）;
+  发布前 `gh api repos/microsoft/WSL/releases` 复核官方最新号——官方≥我们则大版本+1（fallback 1.0.0.0 仅编译期, 发布必须显式传）
 ```
 
 ## 3. 安装/升级命令
