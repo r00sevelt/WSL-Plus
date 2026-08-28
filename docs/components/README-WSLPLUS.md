@@ -16,6 +16,8 @@
 ```
 总纲: 开发手册.md（16章,架构/API/坑库/测试矩阵/交接表）—— 从这里开始
 交接篇: MANUAL-ONBOARD（30分钟上手） | ROADMAP（路线图/缺口排序） | BACKLOG-DEFECT（病单账本）
+深度篇: ARCHITECTURE（分层与端到端数据流） | ADR-DECISIONS（决策档案,先读再决策） | CALLGRAPHS（命令→代码调用链） | GLOSSARY（术语表）
+AI 引导: 仓库根 CLAUDE.md（读序/硬纪律/工具链坑——AI 与人都适用）
 组件（本目录）: 每组件独立文档（API/依赖/扩展点）
 流程: 开发准则(五原则+两条红线) | PUBLISHING(发布升级回滚) | NETWORK-PHASE-DESIGN
      | USBDEV-STUDY | C9-OVN-DESIGN | 任务清单(40+11粒度) | 审计日志
