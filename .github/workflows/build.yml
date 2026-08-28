@@ -6,6 +6,15 @@ name: WSL-Plus Build Verify
 on:
   push:
     branches: [master, dev]
+    paths:
+      - "src/**"
+      - "msipackage/**"
+      - "cmake/**"
+      - "tools/**"
+      - "CMakeLists.txt"
+      - "**/CMakeLists.txt"
+      - ".github/workflows/build.yml"
+      - "packages.config"
   workflow_dispatch:
 
 # WSL-Plus: 并发控制 —— 新 push 顶掉排队的旧运行（免费计划并发=1，防排队烧分钟）
