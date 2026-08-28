@@ -16,7 +16,9 @@
 | #18 | 开 WSL_BUILD_WSL_SETTINGS=ON（**未生效**——ON≠wix 字面 "true", 见 #19） | 264MB 不变 |
 | #19 | WSL_BUILD_WSL_SETTINGS=true（对齐官方 build-job.yml:127）——WSL Settings 进包 | ✅ **346MB ≈ 官方 2.9.9.0(344.3)** |
 | #20 | 安装/卸载致命 bug: 官方 MSIX 动作链缺 SKIPMSIX=1 → "无法删除 msix 程序包(错误:找不到包)"; 加 Property SKIPMSIX=1 整链跳过; 一并确认 wsldeps.dll 在包内(官方 NuGet WSL.Dependencies.amd64fre, wix:36) | 待云验 |
-| #21 | 交付物定稿: 单包 wsl.3.0.0.0.x64.msi（configure -DPACKAGE_VERSION=3.0.0.0 + 官方式命名, 裸 exe 不再上传）; 文档全量化(§8.3 现状/§8.5 版本红线>官方+复核发布流程/§9 修改点 2 处/Settings 决策 §4.5); PUBLISHING 版本复核红线; 本 CHANGELOG | 待云验 |
+| #21 | 交付物定稿: 单包 wsl.3.0.0.0.x64.msi（configure -DPACKAGE_VERSION=3.0.0.0 + 官方式命名, 裸 exe 不再上传）; 文档全量化(§8.3 现状/§8.5 版本红线>官方+复核发布流程/§9 修改点 2 处/Settings 决策 §4.5); PUBLISHING 版本复核红线; 本 CHANGELOG | ⚠️ 首跑失败: pwsh 拆参数(见#22) |
+| #22 | PACKAGE_VERSION 传参被 pwsh 拆分(裸传=3; 引号含式修复, 本地 node 仿真复现) —— 手动 dispatch 重跑 | ✅ SUCCESS: wsl.3.0.0.0.x64.msi(345.2MB, 单包/含全部修复) |
+| 交接篇 | 决策: **找下一位开发者接手**; 文档补齐: 交接三件套(ROADMAP/BACKLOG-DEFECT/MANUAL-ONBOARD)+README 入口+本表; P0 待办=命令叠加式+帮助总表+品牌显名 | 待接任执行 |
 
 ## 版本线备忘
 - 产品线: 3.0.0.0（> 官方 2.9.9.0; 规则=发布前 gh api 复核官方号, ≥我们→大版本+1）
