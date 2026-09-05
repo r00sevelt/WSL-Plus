@@ -109,7 +109,7 @@ struct ShellExecOptions
     }
 };
 
-void PromptForKeyPress()
+void PromptForKeyPressToExit()
 {
     if (wsl::windows::common::wslutil::IsInteractiveConsole())
     {
@@ -1996,7 +1996,7 @@ int wsl::windows::common::WslClient::Main(_In_ LPCWSTR commandLine)
     if (g_promptBeforeExit)
     {
         g_promptBeforeExit = false;
-        PromptForKeyPress();
+        PromptForKeyPressToExit();
     }
 
     return exitCode;

@@ -13,7 +13,10 @@ add_dependencies(wslrelay
 
 target_link_libraries(wslrelay
                       ${COMMON_LINK_LIBRARIES}
-                      common)
+                      common
+                      delayimp.lib)
+
+set_target_properties(wslrelay PROPERTIES LINK_FLAGS "/DELAYLOAD:msi.dll /DELAYLOAD:WINTRUST.dll")
 
 if (NOT WSL_DISABLE_PCH)
     target_precompile_headers(wslrelay REUSE_FROM common)
