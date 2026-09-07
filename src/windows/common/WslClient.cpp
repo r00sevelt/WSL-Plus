@@ -1252,8 +1252,58 @@ int Unmount(_In_ const std::wstring& arg)
     return 0;
 }
 
-int UnregisterDistribution(_In_ LPCWSTR distributionName)
+// WSL-Plus (ADR-14): unregister 高危命令防护。
+// TTY 交互下要求输入发行版名确认（type-to-confirm）；--yes 跳过；
+// 非交互（脚本/管道）保持官方自动化语义，仅打印警告不阻断。
+static bool WslPlusConfirmUnregister(_In_ const std::wstring& distributionName, bool assumeYes)
 {
+    if (assumeYes)
+    {
+        return true;
+    }
+
+    if (!_isatty(_fileno(stdin)))
+    {
+        wprintf(L"[WSL-Plus] 警告: 正在永久删除发行版 '%s' 及其全部数据。\n", distributionName.c_str());
+        return true;
+    }
+
+    wprintf(
+        L"[WSL-Plus] 警告: unregister 将永久删除发行版 '%s' 及其全部数据，此操作无法恢复。\n"
+        L"[WSL-Plus] 输入发行版名以确认删除（其他输入或直接回车取消）: ",
+        distributionName.c_str());
+    fflush(stdout);
+
+    wchar_t buffer[256] = {};
+    if (fgetws(buffer, 256, stdin) == nullptr)
+    {
+        wprintf(L"[WSL-Plus] 未读到确认输入，已取消 unregister。\n");
+        return false;
+    }
+
+    std::wstring confirmation(buffer);
+    while (!confirmation.empty() && (confirmation.back() == L'\n' || confirmation.back() == L'\r'))
+    {
+        confirmation.pop_back();
+    }
+
+    if (confirmation != distributionName)
+    {
+        wprintf(L"[WSL-Plus] 确认失败（输入 '%s' ≠ '%s'），已取消 unregister。\n", confirmation.c_str(), distributionName.c_str());
+        return false;
+    }
+
+    return true;
+}
+
+int UnregisterDistribution(_In_ LPCWSTR distributionName, bool assumeYes)
+{
+    if (!WslPlusConfirmUnregister(distributionName, assumeYes))
+    {
+        wsl::windows::common::wslutil::PrintMessage(L"[WSL-Plus] 操作已取消。");
+        return -1;
+    }
+
     auto progress = wsl::windows::common::ConsoleProgressIndicator(wsl::shared::Localization::MessageStatusUnregistering(), true);
     wsl::windows::common::SvcComm service;
     const GUID distroGuid = service.GetDistributionId(distributionName, LXSS_GET_DISTRO_ID_LIST_ALL);
@@ -1370,7 +1420,20 @@ int WslconfigMain(_In_ int argc, _In_reads_(argc) LPWSTR* argv)
     }
     else if ((argc >= 3) && ((IsEqual(argv[1], WSLCONFIG_COMMAND_UNREGISTER_DISTRIBUTION, true)) || (IsEqual(argv[1], WSLCONFIG_COMMAND_UNREGISTER_DISTRIBUTION_SHORT, true))))
     {
-        exitCode = UnregisterDistribution(argv[2]);
+        // WSL-Plus (ADR-14): --yes/-y 跳过 type-to-confirm 确认；未知参数沿用官方严格校验。
+        bool assumeYes = false;
+        for (int i = 3; i < argc; ++i)
+        {
+            if (IsEqual(argv[i], L"--yes", true) || IsEqual(argv[i], L"-y", true))
+            {
+                assumeYes = true;
+            }
+            else
+            {
+                THROW_HR(WSL_E_INVALID_USAGE);
+            }
+        }
+        exitCode = UnregisterDistribution(argv[2], assumeYes);
     }
     else
     {
