@@ -1252,15 +1252,8 @@ int Unmount(_In_ const std::wstring& arg)
     return 0;
 }
 
-int UnregisterDistribution(_In_ LPCWSTR distributionName, bool assumeYes)
+int UnregisterDistribution(_In_ LPCWSTR distributionName)
 {
-    // WSL-Plus (ADR-14): 确认门已泛化为 wslplus::ConfirmDestructive（与 snapshot delete 等高危命令共用）。
-    if (!wsl::windows::common::wslplus::ConfirmDestructive(L"unregister", distributionName, assumeYes))
-    {
-        wsl::windows::common::wslutil::PrintMessage(L"[WSL-Plus] 操作已取消。");
-        return -1;
-    }
-
     auto progress = wsl::windows::common::ConsoleProgressIndicator(wsl::shared::Localization::MessageStatusUnregistering(), true);
     wsl::windows::common::SvcComm service;
     const GUID distroGuid = service.GetDistributionId(distributionName, LXSS_GET_DISTRO_ID_LIST_ALL);
@@ -1377,20 +1370,7 @@ int WslconfigMain(_In_ int argc, _In_reads_(argc) LPWSTR* argv)
     }
     else if ((argc >= 3) && ((IsEqual(argv[1], WSLCONFIG_COMMAND_UNREGISTER_DISTRIBUTION, true)) || (IsEqual(argv[1], WSLCONFIG_COMMAND_UNREGISTER_DISTRIBUTION_SHORT, true))))
     {
-        // WSL-Plus (ADR-14): --yes/-y 跳过 type-to-confirm 确认；未知参数沿用官方严格校验。
-        bool assumeYes = false;
-        for (int i = 3; i < argc; ++i)
-        {
-            if (IsEqual(argv[i], L"--yes", true) || IsEqual(argv[i], L"-y", true))
-            {
-                assumeYes = true;
-            }
-            else
-            {
-                THROW_HR(WSL_E_INVALID_USAGE);
-            }
-        }
-        exitCode = UnregisterDistribution(argv[2], assumeYes);
+        exitCode = UnregisterDistribution(argv[2]);
     }
     else
     {
@@ -1753,26 +1733,7 @@ int WslMain(_In_ std::wstring_view commandLine)
                 return exitCode;
             }
 
-            // WSL-Plus (ADR-14): --yes/-y 跳过 type-to-confirm 确认；其余参数报无效用法。
-            const std::wstring distributionName(argument);
-            bool assumeYes = false;
-            commandLine = wsl::windows::common::helpers::ConsumeArgument(commandLine, argument);
-            argument = wsl::windows::common::helpers::ParseArgument(commandLine);
-            while (!argument.empty())
-            {
-                if ((argument == L"--yes") || (argument == L"-y"))
-                {
-                    assumeYes = true;
-                    commandLine = wsl::windows::common::helpers::ConsumeArgument(commandLine, argument);
-                    argument = wsl::windows::common::helpers::ParseArgument(commandLine);
-                }
-                else
-                {
-                    THROW_HR(WSL_E_INVALID_USAGE);
-                }
-            }
-
-            return UnregisterDistribution(distributionName.c_str(), assumeYes);
+            return UnregisterDistribution(std::wstring(argument).c_str());
         }
         else if (argument == WSL_SET_DEFAULT_VERSION_ARG)
         {

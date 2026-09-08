@@ -168,6 +168,46 @@ std::optional<int> Dispatch(_In_ const std::wstring& commandLine)
     const std::wstring_view verb(argv[1]);
 
     //
+    // --unregister（官方命令接管，ADR-14）：防护住 plus 独立文件——上游 merge 后无需回补。
+    // 语义兼容：--yes/-y 跳过确认门；非交互警告不阻断；其余参数拒绝。
+    //
+    if (verb == L"--unregister")
+    {
+        if (argc < 3)
+        {
+            wsl::windows::common::wslutil::PrintMessage(L"用法: wsl --unregister <发行版名> [--yes]");
+            return -1;
+        }
+
+        const std::wstring target(argv[2]);
+        bool assumeYes = false;
+        for (int i = 3; i < argc; ++i)
+        {
+            if (argv[i] == std::wstring_view(L"--yes") || argv[i] == std::wstring_view(L"-y"))
+            {
+                assumeYes = true;
+            }
+            else
+            {
+                wsl::windows::common::wslutil::PrintMessage(L"[WSL-Plus] 未知参数: " + std::wstring(argv[i]));
+                return -1;
+            }
+        }
+
+        if (!ConfirmDestructive(L"unregister", target, assumeYes))
+        {
+            wsl::windows::common::wslutil::PrintMessage(L"[WSL-Plus] 操作已取消。");
+            return -1;
+        }
+
+        wsl::windows::common::SvcComm service;
+        const auto distroId = service.GetDistributionId(target.c_str());
+        service.UnregisterDistribution(&distroId);
+        wsl::windows::common::wslutil::PrintSystemError(ERROR_SUCCESS);
+        return 0;
+    }
+
+    //
     // snapshot 子命令组（P1-A 快照；服务端路由 S4 接入）
     //
     if (verb == L"snapshot")
