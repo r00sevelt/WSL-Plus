@@ -1252,53 +1252,10 @@ int Unmount(_In_ const std::wstring& arg)
     return 0;
 }
 
-// WSL-Plus (ADR-14): unregister 高危命令防护。
-// TTY 交互下要求输入发行版名确认（type-to-confirm）；--yes 跳过；
-// 非交互（脚本/管道）保持官方自动化语义，仅打印警告不阻断。
-static bool WslPlusConfirmUnregister(_In_ const std::wstring& distributionName, bool assumeYes)
-{
-    if (assumeYes)
-    {
-        return true;
-    }
-
-    if (!_isatty(_fileno(stdin)))
-    {
-        wprintf(L"[WSL-Plus] 警告: 正在永久删除发行版 '%s' 及其全部数据。\n", distributionName.c_str());
-        return true;
-    }
-
-    wprintf(
-        L"[WSL-Plus] 警告: unregister 将永久删除发行版 '%s' 及其全部数据，此操作无法恢复。\n"
-        L"[WSL-Plus] 输入发行版名以确认删除（其他输入或直接回车取消）: ",
-        distributionName.c_str());
-    fflush(stdout);
-
-    wchar_t buffer[256] = {};
-    if (fgetws(buffer, 256, stdin) == nullptr)
-    {
-        wprintf(L"[WSL-Plus] 未读到确认输入，已取消 unregister。\n");
-        return false;
-    }
-
-    std::wstring confirmation(buffer);
-    while (!confirmation.empty() && (confirmation.back() == L'\n' || confirmation.back() == L'\r'))
-    {
-        confirmation.pop_back();
-    }
-
-    if (confirmation != distributionName)
-    {
-        wprintf(L"[WSL-Plus] 确认失败（输入 '%s' ≠ '%s'），已取消 unregister。\n", confirmation.c_str(), distributionName.c_str());
-        return false;
-    }
-
-    return true;
-}
-
 int UnregisterDistribution(_In_ LPCWSTR distributionName, bool assumeYes)
 {
-    if (!WslPlusConfirmUnregister(distributionName, assumeYes))
+    // WSL-Plus (ADR-14): 确认门已泛化为 wslplus::ConfirmDestructive（与 snapshot delete 等高危命令共用）。
+    if (!wsl::windows::common::wslplus::ConfirmDestructive(L"unregister", distributionName, assumeYes))
     {
         wsl::windows::common::wslutil::PrintMessage(L"[WSL-Plus] 操作已取消。");
         return -1;

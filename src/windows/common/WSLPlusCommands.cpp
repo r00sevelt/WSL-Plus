@@ -36,6 +36,49 @@ namespace
         return wsl::windows::common::string::MultiByteToWide(value);
     }
 
+    // WSL-Plus (ADR-14): 高危命令统一确认门。CLI（WslClient）与子命令执行层共用。
+    // TTY 交互 = type-to-confirm；--yes = 跳过；非交互（脚本/管道）= 警告不阻断（官方自动化语义兼容）。
+    bool ConfirmDestructive(_In_ const std::wstring& what, _In_ const std::wstring& name, bool assumeYes)
+    {
+        if (assumeYes)
+        {
+            return true;
+        }
+
+        if (!_isatty(_fileno(stdin)))
+        {
+            wprintf(L"[WSL-Plus] 警告: %s 将作用于 '%s'，受影响数据不可恢复。\n", what.c_str(), name.c_str());
+            return true;
+        }
+
+        wprintf(
+            L"[WSL-Plus] 警告: %s 将永久影响 '%s' 的数据，此操作无法恢复。\n"
+            L"[WSL-Plus] 输入资源名以确认（其他输入或直接回车取消）: ",
+            what.c_str(), name.c_str());
+        fflush(stdout);
+
+        wchar_t buffer[256] = {};
+        if (fgetws(buffer, 256, stdin) == nullptr)
+        {
+            wprintf(L"[WSL-Plus] 未读到确认输入，已取消。\n");
+            return false;
+        }
+
+        std::wstring confirmation(buffer);
+        while (!confirmation.empty() && (confirmation.back() == L'\n' || confirmation.back() == L'\r'))
+        {
+            confirmation.pop_back();
+        }
+
+        if (confirmation != name)
+        {
+            wprintf(L"[WSL-Plus] 确认失败（输入 '%s' ≠ '%s'），已取消。\n", confirmation.c_str(), name.c_str());
+            return false;
+        }
+
+        return true;
+    }
+
     void PrintSnapshotUsage(); // 前向声明（定义在 ExecuteSnapshot 之后）
 
     // WSL-Plus: 快照命令执行（CLI→SvcComm→服务端→guest btrfs 模块）
@@ -47,10 +90,42 @@ namespace
             return -1;
         }
 
+        // WSL-Plus (ADR-14): delete 为高危动作——剥离 --yes 后强制走统一确认门。
+        std::vector<std::wstring> effectiveArgs(args);
+        bool assumeYes = false;
+        if (action == std::wstring_view(L"delete"))
+        {
+            effectiveArgs.clear();
+            for (const auto& arg : args)
+            {
+                if (arg == L"--yes")
+                {
+                    assumeYes = true;
+                }
+                else
+                {
+                    effectiveArgs.emplace_back(arg);
+                }
+            }
+
+            if (effectiveArgs.empty() || effectiveArgs[0].empty())
+            {
+                PrintSnapshotUsage();
+                return -1;
+            }
+
+            const std::wstring target = (effectiveArgs.size() > 1) ? effectiveArgs[1] : L"<instance 全部快照>";
+            if (!ConfirmDestructive(L"snapshot delete", target, assumeYes))
+            {
+                wsl::windows::common::wslutil::PrintMessage(L"[WSL-Plus] 操作已取消。");
+                return -1;
+            }
+        }
+
         wsl::windows::common::SvcComm service;
-        const auto distroId = service.GetDistributionId(args[0].c_str());
+        const auto distroId = service.GetDistributionId(effectiveArgs[0].c_str());
         const std::string narrowAction = wsl::windows::common::string::WideToMultiByte(action);
-        const std::wstring name = (args.size() > 1) ? args[1] : L"";
+        const std::wstring name = (effectiveArgs.size() > 1) ? effectiveArgs[1] : L"";
         const std::string narrowName = wsl::windows::common::string::WideToMultiByte(name);
 
         const HRESULT result = service.SnapshotDistribution(&distroId, narrowAction.c_str(), narrowName.c_str());
