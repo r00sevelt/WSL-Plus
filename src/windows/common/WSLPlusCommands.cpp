@@ -37,8 +37,9 @@ namespace
     }
 
     // WSL-Plus (ADR-14): 高危命令统一确认门。CLI（WslClient）与子命令执行层共用。
-    // TTY 交互 = type-to-confirm；--yes = 跳过；非交互（脚本/管道）= 警告不阻断（官方自动化语义兼容）。
-    bool ConfirmDestructive(_In_ const std::wstring& what, _In_ const std::wstring& name, bool assumeYes)
+    // 仅删除类操作接入；TTY 交互 = 展示详情 + type-to-confirm；--yes = 跳过；非交互 = 警告不阻断。
+    bool ConfirmDestructive(_In_ const std::wstring& what, _In_ const std::wstring& name, bool assumeYes,
+        _In_opt_ const std::wstring& detail)
     {
         if (assumeYes)
         {
@@ -52,9 +53,13 @@ namespace
         }
 
         wprintf(
-            L"[WSL-Plus] 警告: %s 将永久影响 '%s' 的数据，此操作无法恢复。\n"
-            L"[WSL-Plus] 输入资源名以确认（其他输入或直接回车取消）: ",
+            L"[WSL-Plus] 警告: %s 将永久影响 '%s' 的数据，此操作无法恢复。\n",
             what.c_str(), name.c_str());
+        if (!detail.empty())
+        {
+            wprintf(L"%s\n", detail.c_str());
+        }
+        wprintf(L"[WSL-Plus] 输入资源名以确认（其他输入或直接回车取消）: ");
         fflush(stdout);
 
         wchar_t buffer[256] = {};

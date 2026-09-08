@@ -20,8 +20,10 @@ namespace wsl::windows::common::wslplus
     // 返回该命令的退出码；若 argv 不匹配任何 WSL-Plus 子命令则返回 nullopt。
     std::optional<int> Dispatch(_In_ const std::wstring& commandLine);
 
-    // WSL-Plus (ADR-14): 高危命令统一确认门。
-    // TTY 交互 = type-to-confirm（输入资源名确认）；--yes = 跳过；非交互（脚本/管道）= 警告不阻断。
-    // what: 危险动作描述（如 L"unregister" / L"snapshot delete"）；name: 受影响资源名。
-    bool ConfirmDestructive(_In_ const std::wstring& what, _In_ const std::wstring& name, bool assumeYes);
+    // WSL-Plus (ADR-14): 高危命令统一确认门——仅删除类操作接入（存在性删除=高危；restore/非删除不管）。
+    // TTY 交互 = 展示详情 + type-to-confirm（输入资源全名确认）；--yes = 跳过；非交互（脚本/管道）= 警告不阻断。
+    // what: 危险动作描述（如 L"unregister" / L"snapshot delete"）；name: 受影响资源名；
+    // detail: 可选详情块（如磁盘占用/状态/快照数量——apt 式"删前列清单"），空则省略。
+    bool ConfirmDestructive(_In_ const std::wstring& what, _In_ const std::wstring& name, bool assumeYes,
+        _In_opt_ const std::wstring& detail = L"");
 }
