@@ -36,54 +36,6 @@ namespace
         return wsl::windows::common::string::MultiByteToWide(value);
     }
 
-    // WSL-Plus (ADR-14): 高危命令统一确认门。CLI（WslClient）与子命令执行层共用。
-    // 仅删除类操作接入；TTY 交互 = 展示详情 + type-to-confirm；--yes = 跳过；非交互 = 警告不阻断。
-    bool ConfirmDestructive(_In_ const std::wstring& what, _In_ const std::wstring& name, bool assumeYes,
-        _In_opt_ const std::wstring& detail)
-    {
-        if (assumeYes)
-        {
-            return true;
-        }
-
-        if (!_isatty(_fileno(stdin)))
-        {
-            wprintf(L"[WSL-Plus] 警告: %s 将作用于 '%s'，受影响数据不可恢复。\n", what.c_str(), name.c_str());
-            return true;
-        }
-
-        wprintf(
-            L"[WSL-Plus] 警告: %s 将永久影响 '%s' 的数据，此操作无法恢复。\n",
-            what.c_str(), name.c_str());
-        if (!detail.empty())
-        {
-            wprintf(L"%s\n", detail.c_str());
-        }
-        wprintf(L"[WSL-Plus] 输入资源名以确认（其他输入或直接回车取消）: ");
-        fflush(stdout);
-
-        wchar_t buffer[256] = {};
-        if (fgetws(buffer, 256, stdin) == nullptr)
-        {
-            wprintf(L"[WSL-Plus] 未读到确认输入，已取消。\n");
-            return false;
-        }
-
-        std::wstring confirmation(buffer);
-        while (!confirmation.empty() && (confirmation.back() == L'\n' || confirmation.back() == L'\r'))
-        {
-            confirmation.pop_back();
-        }
-
-        if (confirmation != name)
-        {
-            wprintf(L"[WSL-Plus] 确认失败（输入 '%s' ≠ '%s'），已取消。\n", confirmation.c_str(), name.c_str());
-            return false;
-        }
-
-        return true;
-    }
-
     void PrintSnapshotUsage(); // 前向声明（定义在 ExecuteSnapshot 之后）
 
     // WSL-Plus: 快照命令执行（CLI→SvcComm→服务端→guest btrfs 模块）
@@ -153,6 +105,55 @@ namespace
             L"      wsl snapshot delete <instance> [name]");
     }
 } // namespace
+
+// WSL-Plus (ADR-14): 高危命令统一确认门。CLI（WslClient）与子命令执行层共用——外部链接（勿放 anonymous namespace，
+// 否则与 WSLPlusCommands.h 的声明脱钩，调用点重载解析会撞上错误候选——第 24 轮续 4 的 C2660 教训）。
+// 仅删除类操作接入；TTY 交互 = 展示详情 + type-to-confirm；--yes = 跳过；非交互 = 警告不阻断。
+bool ConfirmDestructive(_In_ const std::wstring& what, _In_ const std::wstring& name, bool assumeYes,
+    _In_opt_ const std::wstring& detail)
+{
+    if (assumeYes)
+    {
+        return true;
+    }
+
+    if (!_isatty(_fileno(stdin)))
+    {
+        wprintf(L"[WSL-Plus] 警告: %s 将作用于 '%s'，受影响数据不可恢复。\n", what.c_str(), name.c_str());
+        return true;
+    }
+
+    wprintf(
+        L"[WSL-Plus] 警告: %s 将永久影响 '%s' 的数据，此操作无法恢复。\n",
+        what.c_str(), name.c_str());
+    if (!detail.empty())
+    {
+        wprintf(L"%s\n", detail.c_str());
+    }
+    wprintf(L"[WSL-Plus] 输入资源名以确认（其他输入或直接回车取消）: ");
+    fflush(stdout);
+
+    wchar_t buffer[256] = {};
+    if (fgetws(buffer, 256, stdin) == nullptr)
+    {
+        wprintf(L"[WSL-Plus] 未读到确认输入，已取消。\n");
+        return false;
+    }
+
+    std::wstring confirmation(buffer);
+    while (!confirmation.empty() && (confirmation.back() == L'\n' || confirmation.back() == L'\r'))
+    {
+        confirmation.pop_back();
+    }
+
+    if (confirmation != name)
+    {
+        wprintf(L"[WSL-Plus] 确认失败（输入 '%s' ≠ '%s'），已取消。\n", confirmation.c_str(), name.c_str());
+        return false;
+    }
+
+    return true;
+}
 
 std::optional<int> Dispatch(_In_ const std::wstring& commandLine)
 {
