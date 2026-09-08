@@ -1796,7 +1796,26 @@ int WslMain(_In_ std::wstring_view commandLine)
                 return exitCode;
             }
 
-            return UnregisterDistribution(std::wstring(argument).c_str());
+            // WSL-Plus (ADR-14): --yes/-y 跳过 type-to-confirm 确认；其余参数报无效用法。
+            const std::wstring distributionName(argument);
+            bool assumeYes = false;
+            commandLine = wsl::windows::common::helpers::ConsumeArgument(commandLine, argument);
+            argument = wsl::windows::common::helpers::ParseArgument(commandLine);
+            while (!argument.empty())
+            {
+                if ((argument == L"--yes") || (argument == L"-y"))
+                {
+                    assumeYes = true;
+                    commandLine = wsl::windows::common::helpers::ConsumeArgument(commandLine, argument);
+                    argument = wsl::windows::common::helpers::ParseArgument(commandLine);
+                }
+                else
+                {
+                    THROW_HR(WSL_E_INVALID_USAGE);
+                }
+            }
+
+            return UnregisterDistribution(distributionName.c_str(), assumeYes);
         }
         else if (argument == WSL_SET_DEFAULT_VERSION_ARG)
         {
